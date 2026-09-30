@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function adminDoc() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    function activeAdmin() { return adminDoc() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true; }
+    function superAdmin() { return activeAdmin() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'superadmin'; }
+    function permission(p) { return superAdmin() || (activeAdmin() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.permissions[p] == true); }
+    function owner(appId) { return signedIn() && resource.data.authUid == request.auth.uid; }
+    function ownerCreate() { return signedIn() && request.resource.data.authUid == request.auth.uid; }
+
+    match /admins/{uid} {
+      allow read: if activeAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update, delete: if superAdmin();
+    }
+
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if permission('settings');
+    }
+    match /exams/{id} {
+      allow read: if true;
+      allow write: if permission('exams');
+    }
+    match /candidates/{uid} {
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow read, update: if (signedIn() && request.auth.uid == uid) || permission('applications');
+      allow delete: if permission('applications');
+    }
+
+    match /applications/{id} {
+      allow create: if ownerCreate();
+      allow read: if activeAdmin() || owner(id);
+      allow update: if permission('applications') || (owner(id) && request.resource.data.authUid == resource.data.authUid && request.resource.data.applicationNumber == resource.data.applicationNumber && request.resource.data.candidateId == resource.data.candidateId && request.resource.data.status == resource.data.status && request.resource.data.paymentStatus == resource.data.paymentStatus && request.resource.data.createdAt == resource.data.createdAt && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['personal','address','education','category','other','documents','declarationAccepted','updatedAt']));
+      allow delete: if permission('applications');
+    }
+
+    match /payments/{id} {
+      allow read: if activeAdmin() || (signedIn() && resource.data.authUid == request.auth.uid);
+      allow create, update, delete: if permission('payments');
+    }
+    match /admitCards/{id} {
+      allow read: if permission('admit') || (signedIn() && resource.data.authUid == request.auth.uid && resource.data.published == true);
+      allow write: if permission('admit');
+    }
+    match /results/{id} {
+      allow read: if permission('results') || (signedIn() && resource.data.authUid == request.auth.uid && resource.data.published == true);
+      allow write: if permission('results');
+    }
+    match /centres/{id} {
+      allow read: if true;
+      allow write: if permission('centres');
+    }
+    match /customFields/{id} {
+      allow read: if true;
+      allow write: if permission('formBuilder');
+    }
+    match /documents/{id} {
+      allow read: if permission('documents');
+      allow write: if permission('documents');
+    }
+    match /notices/{id} {
+      allow read: if true;
+      allow write: if permission('notices');
+    }
+    match /auditLogs/{id} {
+      allow read: if permission('audit');
+      allow create: if activeAdmin();
+      allow update, delete: if superAdmin();
+    }
+    match /reports/{id} {
+      allow read, write: if permission('reports');
+    }
+  }
+}

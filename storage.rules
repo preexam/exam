@@ -1,0 +1,13 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function activeAdmin() { return signedIn() && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.active == true; }
+    function owner(appId) { return signedIn() && firestore.get(/databases/(default)/documents/applications/$(appId)).data.authUid == request.auth.uid; }
+    match /applications/{applicationId}/{fileName} {
+      allow read: if activeAdmin() || owner(applicationId);
+      allow write: if activeAdmin() || (owner(applicationId) && request.resource.size < 10 * 1024 * 1024);
+      allow delete: if activeAdmin() || owner(applicationId);
+    }
+  }
+}
