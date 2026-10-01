@@ -60,3 +60,22 @@
  .admin-page .actions{width:100%}
  .admin-page .actions .btn{flex:1}
 }
+.admin-page .tabs{width:100%;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.admin-page .tabs .nav-main{padding:10px 14px}
+.admin-page .nav-group{position:relative}
+.admin-page .nav-group summary{list-style:none;cursor:pointer;border-radius:9px;padding:10px 14px;color:#667085;font-weight:700;user-select:none}
+.admin-page .nav-group summary::-webkit-details-marker{display:none}
+.admin-page .nav-group[open] summary,.admin-page .nav-group summary:hover{background:#fff;color:#4f46e5;box-shadow:0 3px 10px rgba(16,24,40,.08)}
+.admin-page .nav-group-menu{position:absolute;left:0;top:calc(100% + 6px);z-index:30;min-width:205px;padding:7px;background:#fff;border:1px solid #e4e7ec;border-radius:11px;box-shadow:0 14px 35px rgba(16,24,40,.14)}
+.admin-page .nav-group-menu button{display:block;width:100%;text-align:left;padding:9px 11px!important;color:#344054!important}
+.admin-page .nav-group-menu button:hover{background:#f2f4f7!important;box-shadow:none!important;transform:none}
+.admin-page .settings-section{background:#fff;border:1px solid #e7eaf0;border-radius:15px;padding:18px 20px;margin:16px 0}
+.admin-page .settings-section h3{margin:0 0 10px}
+.admin-page .settings-section .actions{grid-column:1/-1}
+.admin-page [data-builtin-field],.admin-page [data-custom-field-toggle]{width:auto;display:inline-block;margin:0 7px 0 0}
+@media(max-width:520px){
+  .admin-page .nav-group-menu{position:static;margin-top:6px}
+  .admin-page .tabs{align-items:stretch}
+  .admin-page .nav-group,.admin-page .nav-main{width:100%}
+  .admin-page .nav-group summary{text-align:left;background:#fff;border:1px solid #e4e7ec}
+}
