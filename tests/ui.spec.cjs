@@ -17,7 +17,7 @@ test("/application-dashboard.html redirects unauthenticated visitors",async({pag
   expect(response&&response.status()).not.toBe(404);
   await expect(page).toHaveURL(/\/application\.html(?:\?|$)/);
   expect(errors.filter(message=>message!=="No application"),"/application-dashboard.html").toEqual([]);
-}
+});
 test("main navigation has no broken local links",async({page})=>{
   await page.goto("/index.html",{waitUntil:"domcontentloaded"});
   const hrefs=await page.locator("a[href]").evaluateAll(as=>as.map(a=>a.getAttribute("href")).filter(h=>h&&/^[^#?][^:]*\.html(?:\?.*)?$/.test(h)));
