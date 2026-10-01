@@ -54,6 +54,7 @@ exports.createAdmitCardDraftOnFinalSubmit=onDocumentWritten("applications/{appli
     });
     if(selectedId)centre=preferred.find(x=>x.id===selectedId)||null;
   }
+  }
 
   let rollNumber=old.rollNumber||"";
   if(!rollNumber){
