@@ -1,159 +1,62 @@
-```html
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <title>Admin Login - Exam Portal</title>
-
+  <meta name="theme-color" content="#0b1220">
+  <title>Admin Control Center - Exam Portal</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
 </head>
-
-<body>
+<body class="admin-page">
 
 <header class="topbar">
-  <div class="brand">EXAM PORTAL ADMIN</div>
-
-  <nav>
-    <a href="index.html">Public Portal</a>
-  </nav>
+  <div class="brand">
+    <span class="brand-mark">E</span>
+    <span>EXAM PORTAL <small>ADMIN</small></span>
+  </div>
+  <nav><a href="index.html">Public Portal ↗</a></nav>
 </header>
 
-
 <main class="container">
-
-  <!-- =========================
-       ADMIN LOGIN
-  ========================== -->
-
   <section id="login" class="card login-card">
-
-    <h1>Admin Login</h1>
-
-    <p class="muted">
-      Sign in with your authorized administrator account.
-    </p>
+    <div class="login-brand"><span class="brand-mark large">E</span></div>
+    <span class="eyebrow">SECURE ADMINISTRATOR ACCESS</span>
+    <h1>Welcome back</h1>
+    <p class="muted">Sign in to manage your examination portal.</p>
 
     <form id="loginForm">
-
-      <label>
-        Email
-        <input
-          id="email"
-          type="email"
-          required
-          autocomplete="username"
-          placeholder="Admin email"
-        >
+      <label>Email
+        <input id="email" type="email" required autocomplete="username" placeholder="admin@example.com">
       </label>
-
-
-      <label>
-        Password
-        <input
-          id="password"
-          type="password"
-          required
-          autocomplete="current-password"
-          placeholder="Password"
-        >
+      <label>Password
+        <input id="password" type="password" required autocomplete="current-password" placeholder="Enter your password">
       </label>
-
-
-      <button
-        type="submit"
-        class="btn primary"
-      >
-        Sign In
-      </button>
-
-      <p
-        id="loginMsg"
-        class="message"
-        aria-live="polite"
-      ></p>
-
+      <button type="submit" class="btn primary login-btn">Sign In <span>→</span></button>
+      <p id="loginMsg" class="message" aria-live="polite"></p>
     </form>
-
+    <div class="login-footer"><span class="secure-dot"></span> Protected administrator area</div>
   </section>
-
-
-  <!-- =========================
-       ADMIN APPLICATION
-       Hidden until authenticated
-  ========================== -->
 
   <section id="app" hidden>
-
     <div class="admin-head">
-
       <div>
-
-        <h1 id="title">
-          Admin Control Center
-        </h1>
-
-        <p
-          id="welcome"
-          class="muted"
-        ></p>
-
+        <span class="eyebrow">ADMINISTRATOR DASHBOARD</span>
+        <h1 id="title">Admin Control Center</h1>
+        <p id="welcome" class="muted"></p>
       </div>
-
-
       <div class="actions">
-
-        <button
-          id="changePassword"
-          type="button"
-          class="btn"
-        >
-          Change Password
-        </button>
-
-        <button
-          id="logout"
-          type="button"
-          class="btn danger"
-        >
-          Logout
-        </button>
-
+        <button id="changePassword" type="button" class="btn">Change Password</button>
+        <button id="logout" type="button" class="btn danger">Logout</button>
       </div>
-
     </div>
 
-
-    <!-- Dashboard statistics -->
-
     <div id="stats" class="grid-4"></div>
-
-
-    <!-- Admin modules -->
-
     <div id="tabs" class="tabs"></div>
-
-
-    <!-- Current module -->
-
-    <div
-      id="panel"
-      class="card"
-    ></div>
-
+    <div id="panel" class="card admin-panel"></div>
   </section>
-
 </main>
 
-
-<!-- IMPORTANT:
-     admin.js is inside js/ folder
--->
-<script
-  type="module"
-  src="js/admin.js"
-></script>
-
+<script type="module" src="js/admin.js"></script>
 </body>
 </html>
