@@ -21,11 +21,19 @@ export function withinWindow(start,end,now=new Date()){
 }
 export function examLifecycle(exam,now=new Date()){
   if(!exam)return {applicationOpen:null,correctionOpen:false,admitReleased:false,resultReleased:false};
+  const pick=(ms,raw)=>ms!=null?Number(ms):dateValue(raw)?.getTime();
+  const applicationStart=pick(exam.applicationStartMs,exam.applicationStart);
+  const applicationEnd=pick(exam.applicationEndMs,exam.applicationEnd);
+  const correctionStart=pick(exam.correctionStartMs,exam.correctionStart);
+  const correctionEnd=pick(exam.correctionEndMs,exam.correctionEnd);
+  const admitRelease=pick(exam.admitReleaseMs,exam.admitRelease);
+  const resultRelease=pick(exam.resultReleaseMs,exam.resultRelease);
+  const inMs=(start,end)=>{const t=now.getTime();return (start==null||t>=start)&&(end==null||t<=end)};
   return {
-    applicationOpen:withinWindow(exam.applicationStart,exam.applicationEnd,now)&&exam.status!=="Closed"&&exam.status!=="Archived",
-    correctionOpen:exam.allowCorrection!==false&&withinWindow(exam.correctionStart,exam.correctionEnd,now),
-    admitReleased:!!dateValue(exam.admitRelease)&&now>=dateValue(exam.admitRelease),
-    resultReleased:!!dateValue(exam.resultRelease)&&now>=dateValue(exam.resultRelease)
+    applicationOpen:inMs(applicationStart,applicationEnd)&&exam.status!=="Closed"&&exam.status!=="Archived",
+    correctionOpen:exam.allowCorrection!==false&&inMs(correctionStart,correctionEnd),
+    admitReleased:admitRelease!=null&&now.getTime()>=admitRelease,
+    resultReleased:resultRelease!=null&&now.getTime()>=resultRelease
   };
 }
 export async function isAdminUser(uid){if(!uid)return null;const s=await getDoc(doc(db,"admins",uid));return s.exists()?s.data():null;}
