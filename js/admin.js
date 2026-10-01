@@ -301,6 +301,7 @@ onAuthStateChanged(auth,async user=>{
 
     me=user;
     adminData=a;
+    window.__adminData=a;
 
     $("#login").hidden=true;
     $("#app").hidden=false;
@@ -340,7 +341,9 @@ function buildTabs(){
             ?"formBuilder"
             :id==="admins"
               ?"adminUsers"
-              :id
+              :id==="onlineExam"
+                ?"exams"
+                :id
         )
       )
       .map(([id,label])=>
@@ -379,6 +382,7 @@ async function loadTab(tab){
     admit,
     centres,
     results,
+    onlineExam:onlineExamAdmin,
     notices,
     reports,
     admins,
