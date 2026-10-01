@@ -96,12 +96,14 @@ async function saveAnswer(qid,value){
   dirtyTimer=setTimeout(()=>{savePromise=updateDoc(doc(db,"onlineAttempts",attempt.id),{answers:{...(attempt.answers||{})},currentIndex:index,updatedAt:serverTimestamp()}).catch(e=>{console.error("ANSWER SAVE ERROR:",e);throw e})},150);
   renderExam();
 }
-async function flushAnswerSave(){clearTimeout(dirtyTimer);if(!attempt?.id)return;const data={answers:{...(attempt.answers||{})},currentIndex:index,updatedAt:serverTimestamp()};savePromise=updateDoc(doc(db,"onlineAttempts",attempt.id),data);await savePromise;}\nfunction startTimer(){clearInterval(timer);const tick=async()=>{const end=attempt.expiresAt?.toDate?attempt.expiresAt.toDate():new Date(attempt.expiresAt);const left=end.getTime()-Date.now();const el=$("#timer");if(!el)return;if(left<=0){clearInterval(timer);await submit(true);return}el.textContent=formatTime(left);el.classList.toggle("warn",left<300000)};tick();timer=setInterval(tick,1000)}
+async function flushAnswerSave(){clearTimeout(dirtyTimer);if(!attempt?.id)return;const data={answers:{...(attempt.answers||{})},currentIndex:index,updatedAt:serverTimestamp()};savePromise=updateDoc(doc(db,"onlineAttempts",attempt.id),data);await savePromise;}
+function startTimer(){clearInterval(timer);const tick=async()=>{const end=attempt.expiresAt?.toDate?attempt.expiresAt.toDate():new Date(attempt.expiresAt);const left=end.getTime()-Date.now();const el=$("#timer");if(!el)return;if(left<=0){clearInterval(timer);await submit(true);return}el.textContent=formatTime(left);el.classList.toggle("warn",left<300000)};tick();timer=setInterval(tick,1000)}
 async function confirmSubmit(){if(confirm(`Submit exam now? You answered ${answeredCount()} of ${questions.length} questions.`))await submit(false)}
 async function submit(auto){
   clearInterval(timer);
   try{
-    try{await updateDoc(doc(db,"onlineAttempts",attempt.id),{answers:attempt.answers||{},currentIndex:index,updatedAt:serverTimestamp()})}catch{}
+    await flushAnswerSave();
+    await savePromise;
     await updateDoc(doc(db,"onlineAttempts",attempt.id),{status:"Submitted",submittedAt:serverTimestamp(),autoSubmitted:auto,currentIndex:index,updatedAt:serverTimestamp()});
     const fresh=await getDoc(doc(db,"onlineAttempts",attempt.id));
     attempt={id:fresh.id,...fresh.data()};
