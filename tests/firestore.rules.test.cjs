@@ -2,6 +2,7 @@ const fs=require("fs");
 const assert=require("assert");
 const {initializeTestEnvironment,assertFails,assertSucceeds}=require("@firebase/rules-unit-testing");
 const {doc,setDoc,getDoc,updateDoc}=require("firebase/firestore");
+const {ref,uploadBytes,getMetadata}=require("firebase/storage");
 
 describe("Firestore production security rules",function(){
   this.timeout(30000);
@@ -9,7 +10,8 @@ describe("Firestore production security rules",function(){
   before(async()=>{
     env=await initializeTestEnvironment({
       projectId:"exam-9f830",
-      firestore:{rules:fs.readFileSync("firestore.rules","utf8")}
+      firestore:{rules:fs.readFileSync("firestore.rules","utf8")},
+      storage:{rules:fs.readFileSync("storage.rules","utf8"),bucket:"exam-9f830.appspot.com"}
     });
     await env.withSecurityRulesDisabled(async ctx=>{
       const db=ctx.firestore();
