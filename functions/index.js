@@ -224,7 +224,7 @@ exports.gradeOnlineExamAttempt=onDocumentWritten("onlineAttempts/{attemptId}",as
       status:passed?"Passed":"Not Passed",
       published:false,
       source:"online-exam",
-      onlineAttemptId:a.applicationNumber,
+      onlineAttemptId:event.params.attemptId,
       revision,
       issueDate:new Date().toISOString().slice(0,10),
       updatedAt:admin.firestore.FieldValue.serverTimestamp()
