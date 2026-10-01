@@ -643,7 +643,7 @@ async function verifyCandidateDocuments(applicationNumber){
     const next={};
     document.querySelectorAll("[data-doc-status]").forEach(el=>{
       const key=el.dataset.docStatus;
-      const note=document.querySelector(`[data-doc-note="${CSS.escape(key)}"]`)?.value.trim()||"";
+      const note=[...document.querySelectorAll("[data-doc-note]")].find(input=>input.dataset.docNote===key)?.value.trim()||"";
       next[key]={status:el.value,note,verifiedBy:me.uid,verifiedAt:serverTimestamp()};
     });
     await updateDoc(doc(db,"applications",applicationNumber),{documentVerification:next,updatedAt:serverTimestamp()});
@@ -2179,6 +2179,7 @@ async function documents(){
     </form>
 
     <div id="docTable"></div>
+    <p id="docMsg" class="message"></p>
   `;
 
   $("#docForm").onsubmit=async e=>{
