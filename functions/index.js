@@ -70,3 +70,100 @@ exports.createAdmitCardDraftOnFinalSubmit=onDocumentWritten("applications/{appli
   logger.info("Admit-card draft ensured",{applicationNumber:id,examId,rollNumber});
   return null;
 });
+
+exports.initializeOnlineExamAttempt=onDocumentWritten("onlineAttempts/{attemptId}",async event=>{
+  const after=event.data?.after;
+  if(!after?.exists)return null;
+  const a=after.data();
+  if(a.status!=="Starting"||a.startedAt||a.expiresAt)return null;
+  const examSnap=await db.doc(`exams/${a.examId}`).get();
+  if(!examSnap.exists||examSnap.data().onlineExamEnabled!==true)return null;
+  const exam=examSnap.data();
+  const duration=Math.max(1,Math.min(600,Number(exam.onlineExamDuration||60)));
+  const now=admin.firestore.Timestamp.now();
+  const expires=admin.firestore.Timestamp.fromMillis(now.toMillis()+duration*60000);
+  await after.ref.set({
+    status:"In Progress",
+    startedAt:now,
+    expiresAt:expires,
+    updatedAt:admin.firestore.FieldValue.serverTimestamp()
+  },{merge:true});
+  return null;
+});
+
+exports.gradeOnlineExamAttempt=onDocumentWritten("onlineAttempts/{attemptId}",async event=>{
+  const after=event.data?.after;
+  if(!after?.exists)return null;
+  const a=after.data();
+  if(a.status!=="Submitted"||a.graded===true)return null;
+
+  const examSnap=await db.doc(`exams/${a.examId}`).get();
+  if(!examSnap.exists)return null;
+  const exam=examSnap.data();
+  const keysSnap=await db.collection("onlineAnswerKeys").doc(a.examId).collection("items").get();
+  const answers=a.answers||{};
+  let attempted=0,correct=0,wrong=0,score=0,maxMarks=0;
+  keysSnap.forEach(s=>{
+    const k=s.data(), selected=answers[s.id];
+    const marks=Number(k.marks??exam.onlineExamMarksPerQuestion??1);
+    maxMarks+=Math.max(0,marks);
+    if(!selected)return;
+    attempted++;
+    if(String(selected).toUpperCase()===String(k.correct||"").toUpperCase()){
+      correct++;
+      score+=marks;
+    }else{
+      wrong++;
+      score-=Math.max(0,Number(exam.onlineExamNegativeMark||0));
+    }
+  });
+  score=Math.max(0,Number(score.toFixed(2)));
+  const passMarks=Number(exam.onlineExamPassMarks||0);
+  const passed=passMarks>0?score>=passMarks:true;
+  const appId=a.applicationNumber;
+  const resultRef=db.doc(`results/${appId}`);
+  const resultSnap=await resultRef.get();
+  const old=resultSnap.exists?resultSnap.data():{};
+  const revision=Number(old.revision||0)+1;
+  await db.runTransaction(async tx=>{
+    const fresh=await tx.get(after.ref);
+    if(!fresh.exists||fresh.data().graded===true)return;
+    tx.update(after.ref,{
+      graded:true,
+      score,
+      maximumMarks:maxMarks,
+      correct,
+      wrong,
+      attempted,
+      percentage:maxMarks?Number(((score/maxMarks)*100).toFixed(2)):0,
+      passed,
+      gradedAt:admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt:admin.firestore.FieldValue.serverTimestamp()
+    });
+    tx.set(resultRef,{
+      applicationNumber:appId,
+      authUid:a.authUid,
+      examId:a.examId,
+      examName:exam.examName||"",
+      rollNumber:old.rollNumber||"",
+      candidateName:old.candidateName||"",
+      examPost:old.examPost||"",
+      marksObtained:score,
+      finalMarks:score,
+      maximumMarks:maxMarks,
+      percentage:maxMarks?Number(((score/maxMarks)*100).toFixed(2)):0,
+      attempted,
+      correct,
+      wrong,
+      status:passed?"Passed":"Not Passed",
+      published:false,
+      source:"online-exam",
+      onlineAttemptId:a.applicationNumber,
+      revision,
+      issueDate:new Date().toISOString().slice(0,10),
+      updatedAt:admin.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+  });
+  logger.info("Online exam graded",{attemptId:event.params.attemptId,applicationNumber:appId,score,passed});
+  return null;
+});
