@@ -1,6 +1,10 @@
 {
-  "firestore": {"rules": "firestore.rules"},
-  "storage": {"rules": "storage.rules"},
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "public": ".",
     "ignore": [
@@ -10,5 +14,9 @@
       "**/node_modules/**"
     ],
     "cleanUrls": false
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20"
   }
 }
