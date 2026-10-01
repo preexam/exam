@@ -26,7 +26,8 @@ exports.createAdmitCardDraftOnFinalSubmit=onDocumentWritten("applications/{appli
   const old=existing.exists?existing.data():{};
   if(old.published===true) return null;
 
-  let centre=null;
+  let centre=old.centreCode?{id:old.centreCode,name:old.centreName,address:old.centreAddress,city:old.centreCity,district:old.centreDistrict,state:old.centreState,pin:old.centrePin}:null;
+  if(!old.centreCode){
   const centresSnap=await db.collection("centres").where("active","==",true).get();
   const preferred=(centresSnap.docs.map(d=>({id:d.id,...d.data()}))).sort((x,y)=>{
     const city=(a.address?.city||a.address?.district||"").toString().toLowerCase();
