@@ -73,6 +73,50 @@ service cloud.firestore {
       allow read: if permission('results') || (signedIn() && resource.data.authUid == request.auth.uid && resource.data.published == true);
       allow write: if permission('results');
     }
+    match /onlineAttempts/{attemptId} {
+      allow create: if signedIn()
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.status == 'Starting'
+        && request.resource.data.answers is map
+        && request.resource.data.examId != null
+        && request.resource.data.applicationNumber != null
+        && exists(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber))
+        && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.authUid == request.auth.uid
+        && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId))
+        && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamEnabled == true
+        && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamPublished == true;
+      allow get: if permission('results') || (signedIn() && resource.data.authUid == request.auth.uid);
+      allow list: if permission('results');
+      allow update: if permission('results') || (
+        signedIn()
+        && resource.data.authUid == request.auth.uid
+        && resource.data.status == 'In Progress'
+        && request.resource.data.authUid == resource.data.authUid
+        && request.resource.data.examId == resource.data.examId
+        && request.resource.data.applicationNumber == resource.data.applicationNumber
+        && request.resource.data.startedAt == resource.data.startedAt
+        && request.resource.data.expiresAt == resource.data.expiresAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers','currentIndex','status','submittedAt','autoSubmitted','updatedAt'])
+        && (request.resource.data.status == 'In Progress' || (request.resource.data.status == 'Submitted' && request.resource.data.submittedAt != null))
+      );
+      allow delete: if permission('results');
+      match /questions/{questionId} {
+        allow get, list: if signedIn() && (
+          permission('results') ||
+          get(/databases/$(database)/documents/onlineAttempts/$(attemptId)).data.authUid == request.auth.uid
+        );
+        allow write: if false;
+      }
+    }
+
+    match /onlineQuestions/{examId}/items/{questionId} {
+      allow read, write: if permission('exams');
+    }
+
+    match /onlineAnswerKeys/{examId}/items/{questionId} {
+      allow read, write: if permission('exams');
+    }
+
     match /centres/{id} { allow read: if true; allow write: if permission('centres'); }
     match /customFields/{id} { allow read: if signedIn(); allow write: if permission('formBuilder'); }
     match /documents/{id} { allow read: if signedIn(); allow write: if permission('documents'); }
