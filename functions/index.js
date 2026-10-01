@@ -82,12 +82,31 @@ exports.initializeOnlineExamAttempt=onDocumentWritten("onlineAttempts/{attemptId
   const duration=Math.max(1,Math.min(600,Number(exam.onlineExamDuration||60)));
   const now=admin.firestore.Timestamp.now();
   const expires=admin.firestore.Timestamp.fromMillis(now.toMillis()+duration*60000);
-  await after.ref.set({
+  const qs=await db.collection("onlineQuestions").doc(a.examId).collection("items").where("active","==",true).get();
+  let items=qs.docs.map(s=>({id:s.id,...s.data()}));
+  if(exam.onlineExamShuffle!==false){
+    for(let i=items.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[items[i],items[j]]=[items[j],items[i]]}
+  }
+  const total=Math.max(1,Math.min(500,Number(exam.onlineExamTotalQuestions||items.length)));
+  items=items.slice(0,total);
+  const batch=db.batch();
+  items.forEach((q,i)=>{
+    batch.set(after.ref.collection("questions").doc(q.id),{
+      question:q.question,
+      options:q.options||[],
+      marks:Number(q.marks??exam.onlineExamMarksPerQuestion??1),
+      section:q.section||"General",
+      order:i+1
+    });
+  });
+  batch.set(after.ref,{
     status:"In Progress",
     startedAt:now,
     expiresAt:expires,
+    questionCount:items.length,
     updatedAt:admin.firestore.FieldValue.serverTimestamp()
   },{merge:true});
+  await batch.commit();
   return null;
 });
 
