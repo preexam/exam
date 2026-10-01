@@ -44,6 +44,15 @@ describe("Firestore production security rules",function(){
     await assertFails(getDoc(doc(c1,"admitCards","APP100")));
     await assertFails(getDoc(doc(c1,"results","APP100")));
   });
+  it("allows only the canonical online attempt id",async()=>{
+    const c1=env.authenticatedContext("candidate-1").firestore();
+    await assertSucceeds(setDoc(doc(c1,"onlineAttempts","ONLINE_APP100"),{
+      applicationNumber:"APP100",authUid:"candidate-1",examId:"ONLINE",status:"Starting",answers:{}
+    }));
+    await assertFails(setDoc(doc(c1,"onlineAttempts","SECOND_ATTEMPT"),{
+      applicationNumber:"APP100",authUid:"candidate-1",examId:"ONLINE",status:"Starting",answers:{}
+    }));
+  });
   it("prevents candidate from changing protected attempt fields",async()=>{
     const c1=env.authenticatedContext("candidate-1").firestore();
     await assertFails(updateDoc(doc(c1,"onlineAttempts","ONLINE_APP100"),{score:999,graded:true}));
