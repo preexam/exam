@@ -7,7 +7,27 @@ export const clean=v=>String(v??"").trim();
 export const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 export function showMsg(el,msg,error=false){if(el){el.textContent=msg;el.className="message"+(error?" danger-text":"");}}
 export const defaultSettings={portalName:"Government Exam Portal",portalShortName:"EXAM PORTAL",activeExamId:"default",applicationOpen:true,admitCardPublished:false,resultPublished:false,maintenanceMode:false,sessionTimeoutMinutes:30,applicationPrefix:"EXAM",applicationSequence:100001,rollPrefix:"",rollStart:100001,rollWidth:6,formSections:{personal:true,address:true,education:true,category:true,other:true,photo:true,documents:true,declaration:true}};
-export async function getSettings(){const s=await getDoc(doc(db,"settings","portal"));return s.exists()?s.data():defaultSettings;}
+export async function getSettings(){const s=await getDoc(doc(db,"settings","portal"));return s.exists()?{...defaultSettings,...s.data()}:defaultSettings;}
+export async function getActiveExam(settings=null){
+  const s=settings||await getSettings();
+  const id=s.activeExamId||"default";
+  const snap=await getDoc(doc(db,"exams",id));
+  return snap.exists()?{id:snap.id,...snap.data()}:null;
+}
+export function dateValue(v){if(!v)return null;const d=v?.toDate?v.toDate():new Date(v);return Number.isNaN(d.getTime())?null:d;}
+export function withinWindow(start,end,now=new Date()){
+  const t=now.getTime(), a=dateValue(start)?.getTime(), b=dateValue(end)?.getTime();
+  return (!a||t>=a)&&(!b||t<=b);
+}
+export function examLifecycle(exam,now=new Date()){
+  if(!exam)return {applicationOpen:null,correctionOpen:false,admitReleased:false,resultReleased:false};
+  return {
+    applicationOpen:withinWindow(exam.applicationStart,exam.applicationEnd,now)&&exam.status!=="Closed"&&exam.status!=="Archived",
+    correctionOpen:exam.allowCorrection!==false&&withinWindow(exam.correctionStart,exam.correctionEnd,now),
+    admitReleased:!!dateValue(exam.admitRelease)&&now>=dateValue(exam.admitRelease),
+    resultReleased:!!dateValue(exam.resultRelease)&&now>=dateValue(exam.resultRelease)
+  };
+}
 export async function isAdminUser(uid){if(!uid)return null;const s=await getDoc(doc(db,"admins",uid));return s.exists()?s.data():null;}
 export function csvCell(v){const s=String(v??"");return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;}
 export function downloadText(filename,text,type="text/plain"){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
