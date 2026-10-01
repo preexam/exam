@@ -243,6 +243,31 @@ $("#changePassword").onclick=async()=>{
 };
 
 
+let sessionTimer=null;
+let sessionTimeoutMs=0;
+let sessionActivityBound=false;
+
+function resetAdminSessionTimer(){
+  if(!sessionTimeoutMs||!auth.currentUser)return;
+  clearTimeout(sessionTimer);
+  sessionTimer=setTimeout(async()=>{
+    try{ await signOut(auth); }catch{}
+    showMsg($("#loginMsg"),"Admin session expired. Please sign in again.",true);
+  },sessionTimeoutMs);
+}
+
+function startAdminSessionTimeout(minutes){
+  const n=Number(minutes);
+  sessionTimeoutMs=(Number.isFinite(n)&&n>0?n:30)*60*1000;
+  if(!sessionActivityBound){
+    ["click","keydown","mousemove","touchstart"].forEach(type=>
+      document.addEventListener(type,resetAdminSessionTimer,{passive:true})
+    );
+    sessionActivityBound=true;
+  }
+  resetAdminSessionTimer();
+}
+
 /* =========================================================
    AUTH STATE
    ========================================================= */
