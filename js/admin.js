@@ -3639,7 +3639,7 @@ async function parseImport(commit){
 
     showMsg(
       $("#importMsg"),
-      "For reliable no-build deployment, export the Excel sheet as CSV and import that file.",
+      "Only CSV files are supported. Export the Excel sheet as CSV and import that file.",
       true
     );
 
