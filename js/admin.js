@@ -1851,7 +1851,7 @@ async function saveStudentFormSettings(){
   );
 
   await batch.commit();
-  await log("STUDENT_FORM_FIELDS_UPDATED",{details:{enabled}});
+  await log("STUDENT_FORM_FIELDS_UPDATED","",{enabledFields:enabled});
   showMsg($("#formSettingsMsg"),"Student form settings saved.");
   formBuilder();
 }
