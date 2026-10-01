@@ -218,7 +218,7 @@ $("#loginForm").onsubmit=async e=>{
 };
 
 
-$("#logout").onclick=()=>signOut(auth);
+$("#logout").onclick=async()=>{try{if(me)await log("ADMIN_LOGOUT")}catch{}await signOut(auth)};
 
 
 $("#changePassword").onclick=async()=>{
@@ -334,6 +334,7 @@ onAuthStateChanged(auth,async user=>{
     buildTabs();
 
     await dashboard();
+    await log("ADMIN_LOGIN");
 
   }catch(e){
 
