@@ -20,6 +20,16 @@ service cloud.firestore {
       return signedIn() && request.resource.data.authUid == request.auth.uid
         && request.resource.data.candidateId == request.auth.uid;
     }
+    function correctionOpen(app) {
+      return signedIn()
+        && app.examId != null
+        && exists(/databases/$(database)/documents/exams/$(app.examId))
+        && get(/databases/$(database)/documents/exams/$(app.examId)).data.allowCorrection == true
+        && get(/databases/$(database)/documents/exams/$(app.examId)).data.correctionStartMs != null
+        && get(/databases/$(database)/documents/exams/$(app.examId)).data.correctionEndMs != null
+        && request.time.toMillis() >= get(/databases/$(database)/documents/exams/$(app.examId)).data.correctionStartMs
+        && request.time.toMillis() <= get(/databases/$(database)/documents/exams/$(app.examId)).data.correctionEndMs;
+    }
 
     match /admins/{uid} {
       allow read: if superAdmin() || (signedIn() && request.auth.uid == uid);
