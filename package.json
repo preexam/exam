@@ -8,7 +8,7 @@
     "test:ui:firebase": "firebase emulators:exec --only hosting 'playwright test'"
   },
   "devDependencies": {
-    "@firebase/rules-unit-testing": "^3.0.4",
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.55.0",
     "firebase-tools": "^14.0.0",
     "mocha": "^11.7.2",
