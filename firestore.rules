@@ -31,6 +31,13 @@ service cloud.firestore {
         && request.time.toMillis() <= get(/databases/$(database)/documents/exams/$(app.examId)).data.correctionEndMs;
     }
 
+    function paymentSatisfied(app) {
+      return app.paymentStatus == 'Successful'
+        || (app.examId != null
+          && exists(/databases/$(database)/documents/exams/$(app.examId))
+          && get(/databases/$(database)/documents/exams/$(app.examId)).data.paymentRequired == false);
+    }
+
     match /admins/{uid} {
       allow read: if superAdmin() || (signedIn() && request.auth.uid == uid);
       allow create, update, delete: if superAdmin();
@@ -51,7 +58,7 @@ service cloud.firestore {
         && request.resource.data.authUid == resource.data.authUid
         && request.resource.data.applicationNumber == resource.data.applicationNumber
         && request.resource.data.candidateId == resource.data.candidateId
-        && (request.resource.data.status == resource.data.status || (resource.data.status == 'Application Incomplete' && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && request.resource.data.paymentStatus == 'Successful') || (resource.data.status == 'Correction Required' && correctionOpen(resource.data) && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && request.resource.data.paymentStatus == 'Successful')) && (resource.data.status != 'Correction Required' || correctionOpen(resource.data))
+        && (request.resource.data.status == resource.data.status || (resource.data.status == 'Application Incomplete' && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && paymentSatisfied(request.resource.data)) || (resource.data.status == 'Correction Required' && correctionOpen(resource.data) && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && request.resource.data.paymentStatus == 'Successful')) && (resource.data.status != 'Correction Required' || correctionOpen(resource.data))
         && request.resource.data.paymentStatus == resource.data.paymentStatus
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
