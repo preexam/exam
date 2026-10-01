@@ -40,10 +40,11 @@ export async function onlineExamAdmin(){
 async function onlineExamConfig(id=null){
   const snap=id?await getDoc(doc(db,"exams",id)):null;
   const x=snap?.exists()?{id:snap.id,...snap.data()}:{id:"",examName:"",onlineExamDuration:60,onlineExamTotalQuestions:50,onlineExamMarksPerQuestion:1,onlineExamNegativeMark:0,onlineExamPassMarks:0,onlineExamMaxAttempts:1,onlineExamShuffle:true,onlineExamRequiresPayment:false,onlineExamPublished:false};
+  const examList=await getDocs(query(collection(db,"exams"),orderBy("createdAt","desc")));
   $("#panel").innerHTML=`
     <h2>Online Exam Configuration</h2>
     <form id="oeForm" class="form-grid">
-      <label>Exam<select name="examId" required>${(window.__examCache||[]).map(e=>`<option value="${esc(e.id)}" ${e.id===x.id?"selected":""}>${esc(e.examName||e.id)}</option>`).join("")}</select></label>
+      <label>Exam<select name="examId" required>${examList.docs.map(d=>({id:d.id,...d.data()})).map(e=>`<option value="${esc(e.id)}" ${e.id===x.id?"selected":""}>${esc(e.examName||e.id)}</option>`).join("")}</select></label>
       <label>Duration (minutes)<input name="onlineExamDuration" type="number" min="1" max="600" value="${esc(x.onlineExamDuration||60)}" required></label>
       <label>Total Questions<input name="onlineExamTotalQuestions" type="number" min="1" max="500" value="${esc(x.onlineExamTotalQuestions||50)}" required></label>
       <label>Marks / Question<input name="onlineExamMarksPerQuestion" type="number" min="0" step="0.01" value="${esc(x.onlineExamMarksPerQuestion??1)}" required></label>
