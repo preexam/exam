@@ -277,6 +277,8 @@ function startAdminSessionTimeout(minutes){
 onAuthStateChanged(auth,async user=>{
 
   if(!user){
+    clearTimeout(sessionTimer);
+    sessionTimeoutMs=0;
     $("#login").hidden=false;
     $("#app").hidden=true;
     return;
