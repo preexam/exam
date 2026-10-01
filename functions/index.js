@@ -13,13 +13,14 @@ exports.createAdmitCardDraftOnFinalSubmit=onDocumentWritten("applications/{appli
   const after=event.data?.after;
   if(!after?.exists) return null;
   const a=after.data();
-  if(a.status!=="Final Submitted"||a.paymentStatus!=="Successful") return null;
+  if(a.status!=="Final Submitted") return null;
 
   const id=event.params.applicationNumber;
   const examId=a.examId||"default";
   const examSnap=await db.doc(`exams/${examId}`).get();
   const exam=examSnap.exists?examSnap.data():{};
   if(exam.autoAdmitDraft===false) return null;
+  if(exam.paymentRequired!==false&&a.paymentStatus!=="Successful") return null;
 
   const ref=db.doc(`admitCards/${id}`);
   const existing=await ref.get();
