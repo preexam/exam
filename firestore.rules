@@ -81,7 +81,8 @@ service cloud.firestore {
       allow write: if permission('results');
     }
     match /onlineAttempts/{attemptId} {
-      allow create: if signedIn()
+      allow create: if attemptId == request.resource.data.examId + '_' + request.resource.data.applicationNumber
+        && signedIn()
         && request.resource.data.authUid == request.auth.uid
         && request.resource.data.status == 'Starting'
         && request.resource.data.answers is map
