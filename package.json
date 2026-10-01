@@ -4,7 +4,8 @@
   "scripts": {
     "test:rules": "firebase emulators:exec --only firestore 'mocha tests/firestore.rules.test.cjs'",
     "test:ui": "playwright test",
-    "test": "npm run test:rules && npm run test:ui"
+    "test": "npm run test:rules && npm run test:ui",
+    "test:ui:firebase": "firebase emulators:exec --only hosting 'playwright test'"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",
