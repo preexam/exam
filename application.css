@@ -143,3 +143,66 @@ body:has(.application-form) .application-section{scroll-margin-top:95px}
  .sidebar-title{display:none}
  .section-link{flex:0 0 auto;margin:0;white-space:nowrap}
 }
+
+
+/* Step-by-step application experience */
+body:has(.application-form) .application-section{display:none}
+body:has(.application-form) .application-section.step-visible{display:block}
+body:has(.application-form) .step-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:24px;
+  padding-top:18px;
+  border-top:1px solid #e2e8f0;
+}
+body:has(.application-form) .step-counter{
+  color:#667085;
+  font-size:12px;
+  font-weight:800;
+}
+body:has(.application-form) .step-footer .btn{min-width:130px}
+body:has(.application-form) .step-footer .btn:disabled{opacity:.45;cursor:not-allowed}
+body:has(.application-form) .declaration-box{
+  border:1px solid #dbe3f0;
+  border-radius:16px;
+  background:linear-gradient(180deg,#fbfdff,#f8fafc);
+  padding:20px;
+}
+body:has(.application-form) .declaration-intro{
+  margin-bottom:16px;
+  padding-bottom:14px;
+  border-bottom:1px solid #e2e8f0;
+}
+body:has(.application-form) .declaration-intro h3{margin:0 0 6px;font-size:17px;color:#111827}
+body:has(.application-form) .declaration-intro p{margin:0;color:#667085;font-size:12px}
+body:has(.application-form) .declaration-terms{
+  margin:0;
+  padding-left:22px;
+  color:#344054;
+}
+body:has(.application-form) .declaration-terms li{
+  margin:0 0 13px;
+  padding-left:4px;
+  line-height:1.65;
+  font-size:12px;
+}
+body:has(.application-form) .declaration-terms li b{color:#1f2937}
+body:has(.application-form) .declaration-accept{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin-top:18px;
+  background:#eef2ff;
+  border:1px solid #c7d2fe;
+  color:#1e1b4b;
+}
+body:has(.application-form) .declaration-accept input{margin-top:3px;flex:0 0 auto}
+@media(max-width:700px){
+  body:has(.application-form) .step-footer{position:sticky;bottom:0;z-index:15;background:rgba(255,255,255,.96);margin-left:-16px;margin-right:-16px;padding:13px 16px;box-shadow:0 -8px 22px rgba(15,23,42,.08)}
+  body:has(.application-form) .step-footer .btn{min-width:0;flex:1}
+  body:has(.application-form) .step-counter{display:none}
+  body:has(.application-form) .declaration-box{padding:15px}
+  body:has(.application-form) .declaration-terms{padding-left:19px}
+}
