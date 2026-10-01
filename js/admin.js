@@ -1,27 +1,49 @@
 import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";
-import {onlineExamAdmin} from "./online-exam-admin.js";
 
 const $=s=>document.querySelector(s);
 const panel=$("#panel");
 let me=null, adminData=null, currentTab="dashboard", examCache=[];
 
-const TABS=[
-  ["dashboard","Dashboard"],
-  ["exams","Exam Management"],
-  ["applications","Applications"],
-  ["payments","Payments"],
-  ["form","Form Builder"],
-  ["documents","Documents"],
-  ["admit","Admit Cards"],
-  ["centres","Centres & Roll"],
-  ["results","Results"],
-  ["onlineExam","Online Exam"],
-  ["notices","Notices"],
-  ["reports","Reports & Export"],
-  ["admins","Admin Roles"],
-  ["audit","Audit Log"],
-  ["settings","Portal & Security"]
+const TAB_GROUPS=[
+  {label:"Dashboard",items:[["dashboard","Dashboard","dashboard"]]},
+  {
+    label:"Exams",
+    items:[
+      ["exams","Exam Management","exams"],
+      ["results","Results","results"],
+      ["centres","Centres & Roll","centres"]
+    ]
+  },
+  {
+    label:"Applications",
+    items:[
+      ["applications","Applications","applications"],
+      ["payments","Payments","payments"],
+      ["documents","Documents","documents"],
+      ["admit","Admit Cards","admit"]
+    ]
+  },
+  {
+    label:"Form & Portal",
+    items:[
+      ["form","Form Builder","formBuilder"],
+      ["notices","Notices","notices"],
+      ["settings","Portal & Security","settings"]
+    ]
+  },
+  {label:"Reports",items:[["reports","Reports & Export","reports"]]},
+  {
+    label:"Administration",
+    items:[
+      ["admins","Admin Roles","adminUsers"],
+      ["audit","Audit Log","audit"]
+    ]
+  }
 ];
+
+const TAB_LABELS=Object.fromEntries(
+  TAB_GROUPS.flatMap(group=>group.items.map(([id,label])=>[id,label]))
+);
 
 const has=p=>
   adminData?.permissions?.all===true||
@@ -356,30 +378,35 @@ function buildTabs(){
 
   const wrap=$("#tabs");
 
-  wrap.innerHTML=
-    TABS
-      .filter(([id])=>
-        id==="dashboard"||
-        has(
-          id==="form"
-            ?"formBuilder"
-            :id==="admins"
-              ?"adminUsers"
-              :id==="onlineExam"
-                ?"exams"
-                :id
-        )
+  const visible=TAB_GROUPS
+    .map(group=>({
+      label:group.label,
+      items:group.items.filter(([,label,permission])=>
+        permission==="dashboard"||has(permission)
       )
-      .map(([id,label])=>
-        `<button data-tab="${id}">${label}</button>`
-      )
-      .join("");
+    }))
+    .filter(group=>group.items.length);
 
-  wrap
-    .querySelectorAll("button")
-    .forEach(b=>
-      b.onclick=()=>loadTab(b.dataset.tab)
-    );
+  wrap.innerHTML=visible.map((group,index)=>{
+    if(group.label==="Dashboard"){
+      const [id,label]=group.items[0];
+      return `<button data-tab="${id}" class="nav-main">${label}</button>`;
+    }
+    return `
+      <details class="nav-group">
+        <summary>${group.label}</summary>
+        <div class="nav-group-menu">
+          ${group.items.map(([id,label])=>
+            `<button type="button" data-tab="${id}">${label}</button>`
+          ).join("")}
+        </div>
+      </details>
+    `;
+  }).join("");
+
+  wrap.querySelectorAll("[data-tab]").forEach(b=>
+    b.onclick=()=>loadTab(b.dataset.tab)
+  );
 }
 
 
@@ -406,7 +433,6 @@ async function loadTab(tab){
     admit,
     centres,
     results,
-    onlineExam:onlineExamAdmin,
     notices,
     reports,
     admins,
@@ -1713,12 +1739,10 @@ async function formBuilder(){
 
   if(!guard("formBuilder"))return;
 
-  const s=await getDocs(
-    query(
-      collection(db,"customFields"),
-      orderBy("order","asc")
-    )
-  );
+  const [s,settingsData]=await Promise.all([
+    getDocs(query(collection(db,"customFields"),orderBy("order","asc"))),
+    getSettings()
+  ]);
 
   window.__customFields=
     s.docs.map(d=>({
@@ -1726,283 +1750,183 @@ async function formBuilder(){
       ...d.data()
     }));
 
+  window.__formFieldEnabled={
+    ...(settingsData.formFieldEnabled||{})
+  };
+
   panel.innerHTML=`
-
     <h2>Application Form Builder</h2>
-
-    <p>
-      Master fields are pre-built. Each exam can use
-      visibility, required/optional, locked/editable,
-      help text, placeholder, validation, options,
-      order and section controls.
+    <p class="muted">
+      Select exactly which built-in and custom fields students should see.
+      Hidden fields remain stored; they are simply removed from the candidate form.
     </p>
 
-    <form
-      id="fieldForm"
-      class="form-grid"
-    >
+    <div class="actions">
+      <button class="btn primary" id="saveStudentForm">Save Student Form Settings</button>
+      <button class="btn" id="resetStudentForm">Reset Built-in Fields</button>
+    </div>
 
-      ${field(
-        "Field Name",
-        "name",
-        "text",
-        "",
-        "required"
-      )}
-
-      ${select(
-        "Type",
-        "type",
-        [
-          "Text",
-          "Number",
-          "Date",
-          "Dropdown",
-          "Radio",
-          "Checkbox",
-          "Textarea",
-          "Yes/No",
-          "Multi-select",
-          "File Upload"
-        ]
-      )}
-
-      ${select(
-        "Section",
-        "section",
-        [
-          "personal",
-          "address",
-          "education",
-          "category",
-          "other",
-          "photo",
-          "documents",
-          "declaration"
-        ]
-      )}
-
-      ${field(
-        "Placeholder",
-        "placeholder"
-      )}
-
-      ${field(
-        "Help Text",
-        "helpText"
-      )}
-
-      ${field(
-        "Validation / Regex",
-        "validation"
-      )}
-
-      ${field(
-        "Options (comma separated)",
-        "options"
-      )}
-
-      ${field(
-        "Order",
-        "order",
-        "number",
-        "100"
-      )}
-
-      ${check(
-        "Visible",
-        "visible",
-        true
-      )}
-
-      ${check(
-        "Required",
-        "required",
-        false
-      )}
-
-      ${check(
-        "Locked / Admin controlled",
-        "locked",
-        false
-      )}
-
-      <button class="btn primary">
-        Add / Save Custom Field
-      </button>
-
-      <p
-        id="fieldMsg"
-        class="message"
-      ></p>
-
-    </form>
-
+    <p id="formSettingsMsg" class="message"></p>
     <div id="fieldTable"></div>
+
+    <h3 class="section-title">Add Custom Field</h3>
+
+    <form id="fieldForm" class="form-grid">
+      ${field("Field Name","name","text","","required")}
+      ${select("Type","type",["Text","Number","Date","Dropdown","Radio","Checkbox","Textarea","Yes/No","Multi-select","File Upload"])}
+      ${select("Section","section",["personal","address","education","category","other","photo","documents","declaration"])}
+      ${field("Placeholder","placeholder")}
+      ${field("Help Text","helpText")}
+      ${field("Validation / Regex","validation")}
+      ${field("Options (comma separated)","options")}
+      ${field("Order","order","number","100")}
+      ${check("Visible for students","visible",true)}
+      ${check("Required","required",false)}
+      ${check("Locked / Admin controlled","locked",false)}
+      <button class="btn primary">Add Custom Field</button>
+      <p id="fieldMsg" class="message"></p>
+    </form>
   `;
 
   $("#fieldForm").onsubmit=async e=>{
-
     e.preventDefault();
-
     const v=formObj(e.target);
+    v.visible=bool(e.target,"visible");
+    v.required=bool(e.target,"required");
+    v.locked=bool(e.target,"locked");
+    v.order=Number(v.order||100);
+    v.options=(v.options||"").split(",").map(x=>x.trim()).filter(Boolean);
 
-    v.visible=
-      bool(e.target,"visible");
+    await addDoc(collection(db,"customFields"),{
+      ...v,
+      createdAt:serverTimestamp()
+    });
 
-    v.required=
-      bool(e.target,"required");
+    await log("FORM_FIELD_ADDED",v.name);
+    showMsg($("#fieldMsg"),"Custom field added.");
+    formBuilder();
+  };
 
-    v.locked=
-      bool(e.target,"locked");
+  $("#saveStudentForm").onclick=saveStudentFormSettings;
 
-    v.order=
-      Number(v.order||100);
-
-    v.options=
-      (v.options||"")
-        .split(",")
-        .map(x=>x.trim())
-        .filter(Boolean);
-
-    await addDoc(
-      collection(db,"customFields"),
-      {
-        ...v,
-        createdAt:serverTimestamp()
-      }
+  $("#resetStudentForm").onclick=async()=>{
+    const defaults={};
+    BUILTIN_FIELDS.forEach(([key])=>defaults[key]=true);
+    await setDoc(
+      doc(db,"settings","portal"),
+      {formFieldEnabled:defaults,updatedAt:serverTimestamp()},
+      {merge:true}
     );
-
-    await log(
-      "FORM_FIELD_ADDED",
-      v.name
-    );
-
-    showMsg(
-      $("#fieldMsg"),
-      "Field added."
-    );
-
+    await log("STUDENT_FORM_FIELDS_RESET");
+    showMsg($("#formSettingsMsg"),"Built-in student fields reset to enabled.");
     formBuilder();
   };
 
   renderFields();
 }
 
+async function saveStudentFormSettings(){
+
+  const enabled={};
+  document.querySelectorAll("[data-builtin-field]").forEach(input=>{
+    enabled[input.dataset.builtinField]=input.checked;
+  });
+
+  const batch=writeBatch(db);
+
+  document.querySelectorAll("[data-custom-field-toggle]").forEach(input=>{
+    batch.update(
+      doc(db,"customFields",input.dataset.customFieldToggle),
+      {visible:input.checked,updatedAt:serverTimestamp()}
+    );
+  });
+
+  batch.set(
+    doc(db,"settings","portal"),
+    {
+      formFieldEnabled:enabled,
+      updatedAt:serverTimestamp()
+    },
+    {merge:true}
+  );
+
+  await batch.commit();
+  await log("STUDENT_FORM_FIELDS_UPDATED","",{enabledFields:enabled});
+  showMsg($("#formSettingsMsg"),"Student form settings saved.");
+  formBuilder();
+}
 
 function renderFields(){
 
   const rows=[
-    ...BUILTIN_FIELDS.map(x=>({
-      id:"builtin-"+x[0],
-      key:x[0],
-      name:x[1],
-      type:x[2],
-      section:x[3],
-      builtin:true
-    })),
+    ...BUILTIN_FIELDS.map(x=>{
+      const enabled=window.__formFieldEnabled?.[x[0]]!==false;
+      return `
+        <tr>
+          <td>${esc(x[0])}</td>
+          <td>${esc(x[1])}</td>
+          <td>${esc(x[2])}</td>
+          <td>${esc(x[3])}</td>
+          <td>Master</td>
+          <td>
+            <input
+              type="checkbox"
+              data-builtin-field="${esc(x[0])}"
+              ${enabled?"checked":""}
+            >
+            ${enabled?"Enabled":"Disabled"}
+          </td>
+          <td>Admin controlled</td>
+        </tr>
+      `;
+    }),
 
-    ...(window.__customFields||[])
-  ]
-  .map(x=>`
+    ...(window.__customFields||[]).map(x=>`
+      <tr>
+        <td>${esc(x.key||x.id)}</td>
+        <td>${esc(x.name)}</td>
+        <td>${esc(x.type)}</td>
+        <td>${esc(x.section)}</td>
+        <td>Custom</td>
+        <td>
+          <input
+            type="checkbox"
+            data-custom-field-toggle="${esc(x.id)}"
+            ${x.visible!==false?"checked":""}
+          >
+          ${x.visible!==false?"Enabled":"Disabled"}
+        </td>
+        <td>
+          ${x.required?"Required":"Optional"} / ${x.locked?"Locked":"Editable"}
+          <button class="btn small" data-del-field="${esc(x.id)}">Delete</button>
+        </td>
+      </tr>
+    `)];
 
-    <tr>
+  $("#fieldTable").innerHTML=section(
+    "Student Form Controls",
+    table(
+      ["Key","Name","Type","Section","Source","Student Access","Details"],
+      rows
+    )
+  );
 
-      <td>
-        ${esc(x.key||x.name)}
-      </td>
-
-      <td>
-        ${esc(x.name)}
-      </td>
-
-      <td>
-        ${esc(x.type)}
-      </td>
-
-      <td>
-        ${esc(x.section)}
-      </td>
-
-      <td>
-        ${x.builtin?"Master":"Custom"}
-      </td>
-
-      <td>
-        ${
-          x.builtin
-            ?"—"
-            :`${x.visible!==false?"Visible":"Hidden"} / ${x.required?"Required":"Optional"} / ${x.locked?"Locked":"Editable"}`
-        }
-      </td>
-
-      <td>
-        ${
-          x.builtin
-            ?""
-            :`
-              <button
-                class="btn small"
-                data-del-field="${x.id}"
-              >
-                Delete
-              </button>
-            `
-        }
-      </td>
-
-    </tr>
-  `);
-
-  const el=$("#fieldTable");
-
-  if(el){
-
-    el.innerHTML=
-      section(
-        "Fields",
-        table(
-          [
-            "Key",
-            "Name",
-            "Type",
-            "Section",
-            "Source",
-            "Controls",
-            "Action"
-          ],
-          rows
-        )
-      );
-  }
-
-  el
-    ?.querySelectorAll("[data-del-field]")
-    .forEach(b=>
-      b.onclick=async()=>{
-
-        await deleteDoc(
-          doc(
-            db,
-            "customFields",
-            b.dataset.delField
-          )
-        );
-
-        await log(
-          "FORM_FIELD_DELETED",
-          b.dataset.delField
-        );
-
-        formBuilder();
-      }
-    );
+  $("#fieldTable")
+    .querySelectorAll("[data-del-field]")
+    .forEach(b=>b.onclick=async()=>{
+      if(!confirm("Delete this custom field?"))return;
+      await deleteDoc(doc(db,"customFields",b.dataset.delField));
+      await log("FORM_FIELD_DELETED",b.dataset.delField);
+      formBuilder();
+    });
 }
 
 
 /* =========================================================
    DOCUMENTS
    ========================================================= */
+
+
 
 async function documents(){
 
@@ -4635,193 +4559,144 @@ async function settings(){
   if(!guard("settings"))return;
 
   const x=await getSettings();
+  window.__portalSettings=x;
 
   panel.innerHTML=`
+    <h2>Portal Settings & Security</h2>
+    <p class="muted">Each section saves independently. The saved configuration is shown below.</p>
 
-    <h2>
-      Portal Settings & Security
-    </h2>
+    <div class="settings-section">
+      <h3>Portal Basics</h3>
+      <form id="settingsBasics" class="form-grid">
+        ${field("Portal Name","portalName","text",x.portalName||"")}
+        ${field("Short Name","portalShortName","text",x.portalShortName||"")}
+        ${field("Application Prefix","applicationPrefix","text",x.applicationPrefix||"EXAM")}
+        ${field("Application Sequence","applicationSequence","number",x.applicationSequence||100001)}
+        ${field("Public Notice / Footer","footerText","text",x.footerText||"")}
+        <div class="actions">
+          <button class="btn primary">Save Portal Basics</button>
+        </div>
+        <p id="settingsBasicsMsg" class="message"></p>
+      </form>
+    </div>
 
-    <form
-      id="settingsForm"
-      class="form-grid"
-    >
+    <div class="settings-section">
+      <h3>Application & Session</h3>
+      <form id="settingsApplication" class="form-grid">
+        ${check("Application Open","applicationOpen",x.applicationOpen!==false)}
+        ${field("Session Timeout (minutes)","sessionTimeoutMinutes","number",x.sessionTimeoutMinutes||30,"min=1")}
+        <div class="actions">
+          <button class="btn primary">Save Application Settings</button>
+        </div>
+        <p id="settingsApplicationMsg" class="message"></p>
+      </form>
+    </div>
 
-      ${field(
-        "Portal Name",
-        "portalName",
-        "text",
-        x.portalName||""
-      )}
+    <div class="settings-section">
+      <h3>Publication Controls</h3>
+      <form id="settingsPublication" class="form-grid">
+        ${check("Admit Card Published Globally","admitCardPublished",!!x.admitCardPublished)}
+        ${check("Result Published Globally","resultPublished",!!x.resultPublished)}
+        <div class="actions">
+          <button class="btn primary">Save Publication Settings</button>
+        </div>
+        <p id="settingsPublicationMsg" class="message"></p>
+      </form>
+    </div>
 
-      ${field(
-        "Short Name",
-        "portalShortName",
-        "text",
-        x.portalShortName||""
-      )}
+    <div class="settings-section">
+      <h3>Security & Maintenance</h3>
+      <form id="settingsSecurity" class="form-grid">
+        ${check("Maintenance Mode","maintenanceMode",!!x.maintenanceMode)}
+        ${check("Require OTP / MFA for admins","adminMfaRequired",!!x.adminMfaRequired)}
+        <div class="actions">
+          <button class="btn primary">Save Security Settings</button>
+        </div>
+        <p id="settingsSecurityMsg" class="message"></p>
+      </form>
+    </div>
 
-      ${field(
-        "Application Prefix",
-        "applicationPrefix",
-        "text",
-        x.applicationPrefix||"EXAM"
-      )}
-
-      ${field(
-        "Application Sequence",
-        "applicationSequence",
-        "number",
-        x.applicationSequence||100001
-      )}
-
-      ${field(
-        "Session Timeout (minutes)",
-        "sessionTimeoutMinutes",
-        "number",
-        x.sessionTimeoutMinutes||30
-      )}
-
-      ${check(
-        "Application Open",
-        "applicationOpen",
-        x.applicationOpen!==false
-      )}
-
-      ${check(
-        "Admit Card Published Globally",
-        "admitCardPublished",
-        !!x.admitCardPublished
-      )}
-
-      ${check(
-        "Result Published Globally",
-        "resultPublished",
-        !!x.resultPublished
-      )}
-
-      ${check(
-        "Maintenance Mode",
-        "maintenanceMode",
-        !!x.maintenanceMode
-      )}
-
-      ${check(
-        "Require OTP / MFA for admins",
-        "adminMfaRequired",
-        !!x.adminMfaRequired
-      )}
-
-      <label>
-        Public Notice / Footer
-
-        <textarea name="footerText">
-${esc(x.footerText||"")}
-        </textarea>
-
-      </label>
-
-      <button class="btn primary">
-        Save Portal Settings
-      </button>
-
-      <p
-        id="settingsMsg"
-        class="message"
-      ></p>
-
-    </form>
+    <div id="settingsSummary"></div>
 
     <div class="card">
-
-      <h3>
-        Backup / Data Management
-      </h3>
-
-      <p>
-        Use Reports & Export for CSV backups.
-        Firestore native export/restore should be
-        configured in Google Cloud/Firebase infrastructure
-        for full database disaster recovery.
-      </p>
-
-      <button
-        class="btn"
-        id="backupMeta"
-      >
-        Export Current Portal Settings JSON
-      </button>
-
+      <h3>Backup / Data Management</h3>
+      <p>Use Reports & Export for operational CSV backups.</p>
+      <button class="btn" id="backupMeta">Export Current Portal Settings JSON</button>
     </div>
   `;
 
-  $("#settingsForm").onsubmit=async e=>{
-
-    e.preventDefault();
-
-    const v=formObj(e.target);
-
-    for(
-      const n of [
-        "applicationOpen",
-        "admitCardPublished",
-        "resultPublished",
-        "maintenanceMode",
-        "adminMfaRequired"
-      ]
-    ){
-
-      v[n]=bool(
-        e.target,
-        n
-      );
+  const savePart=async(form,fields,msgId)=>{
+    const v=formObj(form);
+    for(const n of fields){
+      if(["applicationOpen","admitCardPublished","resultPublished","maintenanceMode","adminMfaRequired"].includes(n)){
+        v[n]=bool(form,n);
+      }
     }
-
-    v.applicationSequence=
-      Number(
-        v.applicationSequence||100001
-      );
-
-    v.sessionTimeoutMinutes=
-      Number(
-        v.sessionTimeoutMinutes||30
-      );
+    if("applicationSequence" in v)v.applicationSequence=Number(v.applicationSequence||100001);
+    if("sessionTimeoutMinutes" in v)v.sessionTimeoutMinutes=Number(v.sessionTimeoutMinutes||30);
 
     await setDoc(
       doc(db,"settings","portal"),
-      {
-        ...v,
-        updatedAt:serverTimestamp()
-      },
+      {...v,updatedAt:serverTimestamp()},
       {merge:true}
     );
 
-    await log(
-      "PORTAL_SETTINGS_UPDATED"
-    );
+    await log("PORTAL_SETTINGS_UPDATED","",{section:msgId});
+    window.__portalSettings=await getSettings();
+    renderSettingsSummary(window.__portalSettings);
+    showMsg(document.querySelector("#"+msgId), "Settings saved.");
+  };
 
-    showMsg(
-      $("#settingsMsg"),
-      "Settings saved."
-    );
+  $("#settingsBasics").onsubmit=e=>{
+    e.preventDefault();
+    savePart(e.target,["portalName","portalShortName","applicationPrefix","applicationSequence","footerText"],"settingsBasicsMsg");
+  };
+
+  $("#settingsApplication").onsubmit=e=>{
+    e.preventDefault();
+    savePart(e.target,["applicationOpen","sessionTimeoutMinutes"],"settingsApplicationMsg");
+  };
+
+  $("#settingsPublication").onsubmit=e=>{
+    e.preventDefault();
+    savePart(e.target,["admitCardPublished","resultPublished"],"settingsPublicationMsg");
+  };
+
+  $("#settingsSecurity").onsubmit=e=>{
+    e.preventDefault();
+    savePart(e.target,["maintenanceMode","adminMfaRequired"],"settingsSecurityMsg");
   };
 
   $("#backupMeta").onclick=()=>{
-
+    const current=window.__portalSettings||{};
     downloadText(
       "portal-settings.json",
-
-      JSON.stringify(
-        {
-          ...x,
-          exportedAt:
-            new Date().toISOString()
-        },
-        null,
-        2
-      ),
-
+      JSON.stringify({...current,exportedAt:new Date().toISOString()},null,2),
       "application/json"
     );
   };
+
+  renderSettingsSummary(x);
+}
+
+function renderSettingsSummary(x){
+
+  const rows=[
+    ["Portal Name",x.portalName],
+    ["Short Name",x.portalShortName],
+    ["Application Prefix",x.applicationPrefix],
+    ["Application Sequence",x.applicationSequence],
+    ["Application Open",x.applicationOpen!==false?"Enabled":"Disabled"],
+    ["Session Timeout",`${x.sessionTimeoutMinutes||30} minutes`],
+    ["Admit Card Published",x.admitCardPublished?"Enabled":"Disabled"],
+    ["Result Published",x.resultPublished?"Enabled":"Disabled"],
+    ["Maintenance Mode",x.maintenanceMode?"Enabled":"Disabled"],
+    ["Admin MFA",x.adminMfaRequired?"Enabled":"Disabled"],
+    ["Enabled Student Fields",Object.entries(x.formFieldEnabled||{}).filter(([,v])=>v!==false).map(([k])=>k).join(", ")||"All built-in fields by default"]
+  ];
+
+  $("#settingsSummary").innerHTML=section(
+    "Currently Saved Settings",
+    table(["Setting","Saved Value"],rows.map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v??"")}</td></tr>`))
+  );
 }
