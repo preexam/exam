@@ -4564,64 +4564,42 @@ async function audit(){
     query(
       collection(db,"auditLogs"),
       orderBy("createdAt","desc"),
-      limit(500)
+      limit(1000)
     )
   );
 
-  panel.innerHTML=
-    `
-      <h2>Activity / Audit Log</h2>
+  window.__auditLogs=s.docs.map(d=>({id:d.id,...d.data()}));
 
-      ${
-        table(
-          [
-            "Admin",
-            "Action",
-            "Candidate",
-            "Details",
-            "Time"
-          ],
+  panel.innerHTML=`
+    <h2>Activity / Audit Log</h2>
+    <div class="toolbar">
+      <input id="auditSearch" placeholder="Search admin / action / candidate">
+      <button class="btn" id="auditExport">Export CSV</button>
+    </div>
+    <div id="auditTable"></div>
+  `;
 
-          s.docs.map(d=>{
+  const render=()=>{
+    const q=$("#auditSearch").value.trim().toLowerCase();
+    const rows=(window.__auditLogs||[]).filter(x=>
+      [x.admin,x.adminUid,x.action,x.candidate,JSON.stringify(x.details||{})]
+        .some(v=>String(v||"").toLowerCase().includes(q))
+    );
+    $("#auditTable").innerHTML=table(
+      ["Admin","Action","Candidate","Details","Time"],
+      rows.map(x=>`<tr><td>${esc(x.admin)}</td><td>${esc(x.action)}</td><td>${esc(x.candidate)}</td><td>${esc(JSON.stringify(x.details||{}))}</td><td>${esc(toDate(x.createdAt)||x.time)}</td></tr>`)
+    );
+  };
 
-            const x=d.data();
-
-            return `
-              <tr>
-
-                <td>
-                  ${esc(x.admin)}
-                </td>
-
-                <td>
-                  ${esc(x.action)}
-                </td>
-
-                <td>
-                  ${esc(x.candidate)}
-                </td>
-
-                <td>
-                  ${esc(
-                    JSON.stringify(
-                      x.details||{}
-                    )
-                  )}
-                </td>
-
-                <td>
-                  ${esc(
-                    toDate(x.createdAt)||
-                    x.time
-                  )}
-                </td>
-
-              </tr>
-            `;
-          })
-        )
-      }
-    `;
+  $("#auditSearch").oninput=render;
+  $("#auditExport").onclick=()=>{
+    const rows=(window.__auditLogs||[]).map(x=>[
+      x.admin,x.adminUid,x.action,x.candidate,JSON.stringify(x.details||{}),toDate(x.createdAt)||x.time
+    ]);
+    downloadText("audit-log.csv",[["Admin","Admin UID","Action","Candidate","Details","Time"],...rows]
+      .map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n"),"text/csv");
+  };
+  render();
 }
 
 
