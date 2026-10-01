@@ -288,13 +288,30 @@ onAuthStateChanged(auth,async user=>{
 
     const a=await isAdminUser(user.uid);
 
-    if(!a?.active){
+    if(!a){
+      console.error("ADMIN PROFILE MISSING",{
+        uid:user.uid,
+        email:user.email
+      });
 
       await signOut(auth);
 
       showMsg(
         $("#loginMsg"),
-        "This account is not an active admin.",
+        "Admin profile not found. Add this Firebase Auth UID to Firestore: admins/" + user.uid,
+        true
+      );
+
+      return;
+    }
+
+    if(a.active!==true){
+
+      await signOut(auth);
+
+      showMsg(
+        $("#loginMsg"),
+        "This admin profile is inactive. Ask a superadmin to activate it.",
         true
       );
 
@@ -304,6 +321,7 @@ onAuthStateChanged(auth,async user=>{
     me=user;
     adminData=a;
     window.__adminData=a;
+
     const portalSettings=await getSettings();
     startAdminSessionTimeout(portalSettings.sessionTimeoutMinutes);
 
@@ -321,11 +339,12 @@ onAuthStateChanged(auth,async user=>{
 
     console.error("ADMIN PROFILE ERROR:",e);
 
-    await signOut(auth);
+    const code=e?.code||"unknown";
+    const detail=e?.message||"Firebase request failed.";
 
     showMsg(
       $("#loginMsg"),
-      "Unable to load admin profile.",
+      "Admin panel load failed: " + code + " — " + detail,
       true
     );
   }
