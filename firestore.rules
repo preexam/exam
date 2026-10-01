@@ -22,7 +22,7 @@ service cloud.firestore {
     }
 
     match /admins/{uid} {
-      allow read: if activeAdmin() || (signedIn() && request.auth.uid == uid);
+      allow read: if superAdmin() || (signedIn() && request.auth.uid == uid);
       allow create, update, delete: if superAdmin();
     }
     match /settings/{id} { allow read: if true; allow write: if permission('settings'); }
@@ -34,7 +34,7 @@ service cloud.firestore {
     }
     match /applications/{id} {
       allow create: if ownerCreate();
-      allow read: if activeAdmin() || owner(id);
+      allow read: if permission('applications') || owner(id);
       allow update: if permission('applications') || (
         owner(id)
         && resource.data.status != 'Final Submitted'
@@ -52,7 +52,7 @@ service cloud.firestore {
       allow delete: if permission('applications');
     }
     match /payments/{id} {
-      allow read: if activeAdmin() || (signedIn() && resource.data.authUid == request.auth.uid);
+      allow read: if permission('payments') || (signedIn() && resource.data.authUid == request.auth.uid);
       allow create, update, delete: if permission('payments');
     }
     match /admitCards/{id} {
