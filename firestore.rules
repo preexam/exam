@@ -1,95 +1,128 @@
 rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+
+service firebase.storage {
+
+  match /b/{bucket}/o {
+
+    /* =========================================================
+       BASIC AUTH
+       ========================================================= */
 
     function signedIn() {
       return request.auth != null;
     }
 
+
+    /* =========================================================
+       ADMIN HELPERS
+       ========================================================= */
+
+    function adminDoc() {
+      return firestore.get(
+        /databases/(default)/documents/admins/$(request.auth.uid)
+      );
+    }
+
     function isAdmin() {
       return signedIn()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true;
+        && firestore.exists(
+          /databases/(default)/documents/admins/$(request.auth.uid)
+        )
+        && adminDoc().data.active == true;
     }
 
-    function isOwner(candidateId) {
-      return signedIn() && request.auth.uid == candidateId;
+    function isSuperAdmin() {
+      return isAdmin()
+        && adminDoc().data.role == "superadmin";
     }
 
-    match /admins/{uid} {
-      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
-      allow write: if isAdmin();
+    function hasApplicationPermission() {
+      return isAdmin()
+        && (
+          isSuperAdmin()
+          || adminDoc().data.permissions.all == true
+          || adminDoc().data.permissions.applications == true
+        );
     }
 
-    match /settings/{doc} {
-      allow read: if true;
-      allow write: if isAdmin();
+
+    /* =========================================================
+       APPLICATION OWNER
+       ========================================================= */
+
+    function isApplicationOwner(applicationId) {
+      return signedIn()
+        && firestore.exists(
+          /databases/(default)/documents/applications/$(applicationId)
+        )
+        && firestore.get(
+          /databases/(default)/documents/applications/$(applicationId)
+        ).data.authUid == request.auth.uid;
     }
 
-    match /exams/{examId} {
-      allow read: if true;
-      allow write: if isAdmin();
+
+    /* =========================================================
+       FILE VALIDATION
+       ========================================================= */
+
+    function validFileSize() {
+      return request.resource.size < 10 * 1024 * 1024;
     }
 
-    match /candidates/{candidateId} {
-      allow create: if isOwner(candidateId);
-      allow read, update: if isOwner(candidateId) || isAdmin();
-      allow delete: if isAdmin();
+    function validContentType() {
+      return request.resource.contentType.matches(
+        'image/(jpeg|jpg|png|webp)|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      );
     }
 
-    match /applications/{applicationId} {
-      allow create: if signedIn();
-      allow read, update: if isAdmin()
-        || (signedIn() && resource.data.authUid == request.auth.uid);
-      allow delete: if isAdmin();
+
+    /* =========================================================
+       APPLICATION FILES
+       ========================================================= */
+
+    match /applications/{applicationId}/{fileName} {
+
+      /*
+       * Candidate can read only files belonging to their
+       * own application.
+       *
+       * Application/admin users with proper permission can
+       * also read application files.
+       */
+      allow read: if isApplicationOwner(applicationId)
+        || hasApplicationPermission();
+
+
+      /*
+       * Candidate can upload to their own application.
+       *
+       * Admin with application permission can also upload/
+       * replace files when required.
+       */
+      allow write: if (
+          isApplicationOwner(applicationId)
+          || hasApplicationPermission()
+        )
+        && validFileSize()
+        && validContentType();
+
+
+      /*
+       * Candidate can delete their own files.
+       * Authorized application admins can also delete files.
+       */
+      allow delete: if isApplicationOwner(applicationId)
+        || hasApplicationPermission();
     }
 
-    match /payments/{paymentId} {
-      allow read: if isAdmin()
-        || (signedIn() && resource.data.authUid == request.auth.uid);
-      allow create, update: if isAdmin();
-    }
 
-    match /admitCards/{applicationId} {
-      allow read: if isAdmin()
-        || (signedIn() && resource.data.authUid == request.auth.uid);
-      allow write: if isAdmin();
-    }
+    /* =========================================================
+       DEFAULT DENY
+       ========================================================= */
 
-    match /results/{applicationId} {
-      allow read: if isAdmin()
-        || (signedIn() && resource.data.authUid == request.auth.uid);
-      allow write: if isAdmin();
-    }
+    /*
+     * Any storage path not explicitly defined above is denied.
+     */
 
-    match /notices/{noticeId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /centres/{centreId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /auditLogs/{logId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
-    }
-
-    match /customFields/{fieldId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /documents/{documentId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
-    }
-
-    match /reports/{reportId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
-    }
   }
 }
