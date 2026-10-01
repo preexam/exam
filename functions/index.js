@@ -239,3 +239,170 @@ exports.gradeOnlineExamAttempt=onDocumentWritten("onlineAttempts/{attemptId}",as
   logger.info("Online exam graded",{attemptId:event.params.attemptId,applicationNumber:appId,score,passed});
   return null;
 });
+
+
+const {onCall,HttpsError,onRequest}=require("firebase-functions/v2/https");
+const {defineSecret}=require("firebase-functions/params");
+const crypto=require("crypto");
+
+const RAZORPAY_KEY_ID=defineSecret("RAZORPAY_KEY_ID");
+const RAZORPAY_KEY_SECRET=defineSecret("RAZORPAY_KEY_SECRET");
+const RAZORPAY_WEBHOOK_SECRET=defineSecret("RAZORPAY_WEBHOOK_SECRET");
+
+function razorpayAuthHeader(){
+  return "Basic "+Buffer.from(`${RAZORPAY_KEY_ID.value()}:${RAZORPAY_KEY_SECRET.value()}`).toString("base64");
+}
+async function razorpayRequest(path,options={}){
+  const response=await fetch("https://api.razorpay.com/v1"+path,{
+    ...options,
+    headers:{Authorization:razorpayAuthHeader(),"Content-Type":"application/json",...(options.headers||{})}
+  });
+  const text=await response.text();
+  let data={};
+  try{data=text?JSON.parse(text):{}}catch{data={error:{description:text}}}
+  if(!response.ok)throw new Error(data?.error?.description||"Razorpay API request failed.");
+  return data;
+}
+function safeEqualHex(a,b){
+  if(typeof a!=="string"||typeof b!=="string"||a.length!==b.length)return false;
+  try{return crypto.timingSafeEqual(Buffer.from(a,"hex"),Buffer.from(b,"hex"))}catch{return false}
+}
+function webhookSignature(body,secret){
+  return crypto.createHmac("sha256",secret).update(body).digest("hex");
+}
+function examPaymentWindowOpen(exam){
+  const end=exam?.paymentEndMs!=null?Number(exam.paymentEndMs):(exam?.paymentEnd?new Date(exam.paymentEnd).getTime():null);
+  return end==null||(!Number.isNaN(end)&&Date.now()<=end);
+}
+async function markPaymentSuccessful({applicationNumber,orderId,paymentId,amountPaise,signature,source}){
+  const appRef=db.doc(`applications/${applicationNumber}`);
+  const paymentRef=db.doc(`payments/${orderId}`);
+  await db.runTransaction(async tx=>{
+    const appSnap=await tx.get(appRef);
+    const paymentSnap=await tx.get(paymentRef);
+    if(!appSnap.exists)throw new Error("Application not found.");
+    const app=appSnap.data();
+    if(app.paymentStatus==="Successful")return;
+    if(app.paymentOrderId!==orderId)throw new Error("Payment order does not match the application.");
+    const examSnap=await tx.get(db.doc(`exams/${app.examId||"default"}`));
+    const exam=examSnap.exists?examSnap.data():{};
+    const expected=Math.round(Number(exam.fee||0)*100);
+    if(expected<=0||amountPaise!==expected)throw new Error("Payment amount does not match the configured application fee.");
+    tx.set(paymentRef,{
+      applicationNumber,authUid:app.authUid||"",gateway:"razorpay",orderId,
+      transactionId:paymentId,paymentReference:paymentId,
+      amount:Number((amountPaise/100).toFixed(2)),amountPaise,currency:"INR",
+      status:"Successful",verificationSource:source,
+      signature:source==="checkout"?signature||null:null,
+      verifiedAt:admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt:admin.firestore.FieldValue.serverTimestamp(),
+      createdAt:paymentSnap.exists?(paymentSnap.data().createdAt||admin.firestore.FieldValue.serverTimestamp()):admin.firestore.FieldValue.serverTimestamp()
+    },{merge:true});
+    tx.update(appRef,{
+      paymentStatus:"Successful",paymentOrderId:orderId,paymentId,
+      paymentVerifiedAt:admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt:admin.firestore.FieldValue.serverTimestamp()
+    });
+  });
+}
+
+exports.createRazorpayOrder=onCall({secrets:[RAZORPAY_KEY_ID,RAZORPAY_KEY_SECRET]},async request=>{
+  if(!request.auth)throw new HttpsError("unauthenticated","Please sign in again.");
+  const applicationNumber=String(request.data?.applicationNumber||"").trim();
+  if(!applicationNumber)throw new HttpsError("invalid-argument","Application number is required.");
+  const appRef=db.doc(`applications/${applicationNumber}`);
+  const appSnap=await appRef.get();
+  if(!appSnap.exists||appSnap.data().authUid!==request.auth.uid)throw new HttpsError("permission-denied","Application access denied.");
+  const app=appSnap.data();
+  if(app.paymentStatus==="Successful")throw new HttpsError("failed-precondition","Payment is already successful.");
+  const examSnap=await db.doc(`exams/${app.examId||"default"}`).get();
+  if(!examSnap.exists)throw new HttpsError("failed-precondition","Exam configuration not found.");
+  const exam=examSnap.data();
+  if(exam.paymentRequired===false)return {required:false};
+  if(!examPaymentWindowOpen(exam))throw new HttpsError("failed-precondition","The payment window has closed.");
+  const amountPaise=Math.round(Number(exam.fee||0)*100);
+  if(!Number.isFinite(amountPaise)||amountPaise<=0)throw new HttpsError("failed-precondition","Application fee is not configured.");
+  const order=await razorpayRequest("/orders",{
+    method:"POST",
+    body:JSON.stringify({amount:amountPaise,currency:"INR",receipt:applicationNumber,notes:{applicationNumber,examId:app.examId||"default"}})
+  });
+  await db.runTransaction(async tx=>{
+    const fresh=await tx.get(appRef);
+    if(!fresh.exists||fresh.data().authUid!==request.auth.uid)throw new Error("Application changed or access denied.");
+    tx.update(appRef,{
+      paymentOrderId:order.id,paymentOrderAmount:amountPaise,
+      paymentOrderCreatedAt:admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt:admin.firestore.FieldValue.serverTimestamp()
+    });
+    tx.set(db.doc(`payments/${order.id}`),{
+      applicationNumber,authUid:request.auth.uid,gateway:"razorpay",orderId:order.id,
+      amount:Number((amountPaise/100).toFixed(2)),amountPaise,currency:"INR",
+      status:"Pending",createdAt:admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt:admin.firestore.FieldValue.serverTimestamp()
+    });
+  });
+  return {required:true,keyId:RAZORPAY_KEY_ID.value(),orderId:order.id,amount:amountPaise,currency:"INR",description:`Application Fee - ${applicationNumber}`};
+});
+
+exports.verifyRazorpayPayment=onCall({secrets:[RAZORPAY_KEY_SECRET,RAZORPAY_KEY_ID]},async request=>{
+  if(!request.auth)throw new HttpsError("unauthenticated","Please sign in again.");
+  const applicationNumber=String(request.data?.applicationNumber||"").trim();
+  const orderId=String(request.data?.orderId||"").trim();
+  const paymentId=String(request.data?.paymentId||"").trim();
+  const signature=String(request.data?.signature||"").trim();
+  if(!applicationNumber||!orderId||!paymentId||!signature)throw new HttpsError("invalid-argument","Payment verification data is incomplete.");
+  const appSnap=await db.doc(`applications/${applicationNumber}`).get();
+  if(!appSnap.exists||appSnap.data().authUid!==request.auth.uid)throw new HttpsError("permission-denied","Application access denied.");
+  const app=appSnap.data();
+  if(app.paymentOrderId!==orderId)throw new HttpsError("failed-precondition","This payment order is not linked to the application.");
+  if(app.paymentStatus==="Successful")return {success:true,status:"Successful"};
+  const expectedSignature=crypto.createHmac("sha256",RAZORPAY_KEY_SECRET.value()).update(`${orderId}|${paymentId}`).digest("hex");
+  if(!safeEqualHex(expectedSignature,signature))throw new HttpsError("permission-denied","Payment signature verification failed.");
+  const payment=await razorpayRequest(`/payments/${encodeURIComponent(paymentId)}`,{method:"GET"});
+  const examSnap=await db.doc(`exams/${app.examId||"default"}`).get();
+  const expectedAmount=Math.round(Number(examSnap.exists?examSnap.data().fee:0)*100);
+  if(payment.order_id!==orderId||payment.status!=="captured"||Number(payment.amount)!==expectedAmount)throw new HttpsError("failed-precondition","Payment is not captured or the amount does not match.");
+  await markPaymentSuccessful({applicationNumber,orderId,paymentId,amountPaise:Number(payment.amount),signature,source:"checkout"});
+  return {success:true,status:"Successful",paymentId};
+});
+
+exports.razorpayWebhook=onRequest({secrets:[RAZORPAY_WEBHOOK_SECRET,RAZORPAY_KEY_ID,RAZORPAY_KEY_SECRET]},async(req,res)=>{
+  if(req.method!=="POST"){res.status(405).send("Method Not Allowed");return;}
+  const raw=Buffer.isBuffer(req.rawBody)?req.rawBody:Buffer.from(JSON.stringify(req.body||{}));
+  const signature=req.get("X-Razorpay-Signature")||"";
+  if(!safeEqualHex(webhookSignature(raw,RAZORPAY_WEBHOOK_SECRET.value()),signature)){res.status(401).send("Invalid signature");return;}
+  const event=req.body||{};
+  const eventId=req.get("X-Razorpay-Event-Id")||"";
+  if(eventId){
+    const existing=await db.doc(`razorpayWebhookEvents/${eventId}`).get();
+    if(existing.exists){res.status(200).send("OK");return;}
+  }
+  const entity=event?.payload?.payment?.entity;
+  const orderId=entity?.order_id;
+  try{
+    if(orderId&&event.event==="payment.captured"){
+      const paymentSnap=await db.doc(`payments/${orderId}`).get();
+      if(paymentSnap.exists){
+        const p=paymentSnap.data();
+        await markPaymentSuccessful({applicationNumber:p.applicationNumber,orderId,paymentId:entity.id,amountPaise:Number(entity.amount||0),source:"webhook"});
+      }
+    }else if(orderId&&event.event==="payment.failed"){
+      const paymentRef=db.doc(`payments/${orderId}`);
+      const paymentSnap=await paymentRef.get();
+      if(paymentSnap.exists&&paymentSnap.data().status!=="Successful"){
+        await paymentRef.set({
+          status:"Failed",transactionId:entity.id||"",paymentReference:entity.id||"",
+          failureReason:entity.error_description||"",updatedAt:admin.firestore.FieldValue.serverTimestamp()
+        },{merge:true});
+        await db.doc(`applications/${paymentSnap.data().applicationNumber}`).set({
+          paymentStatus:"Failed",updatedAt:admin.firestore.FieldValue.serverTimestamp()
+        },{merge:true});
+      }
+    }
+    if(eventId)await db.doc(`razorpayWebhookEvents/${eventId}`).set({receivedAt:admin.firestore.FieldValue.serverTimestamp(),event:event.event||""});
+    res.status(200).send("OK");
+  }catch(e){
+    logger.error("Razorpay webhook processing failed",{event:event.event||"",orderId,error:e?.message});
+    res.status(500).send("Retry");
+  }
+});
