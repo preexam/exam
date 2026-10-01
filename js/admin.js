@@ -2944,8 +2944,8 @@ async function toggleAdmit(id){
   const x=s.data();
   if(x.published){await updateDoc(doc(db,"admitCards",id),{published:false,status:"Draft",publishedAt:null,updatedAt:serverTimestamp()});await log("ADMIT_CARD_UNPUBLISHED",id);admit();return}
   if(!x.rollNumber){alert("Roll number is required before publishing.");return}
-  const settings=await getSettings();
-  const exam=await getActiveExam(settings);
+  const examSnap=x.examId?await getDoc(doc(db,"exams",x.examId)):null;
+  const exam=examSnap?.exists()?{id:examSnap.id,...examSnap.data()}:null;
   const life=examLifecycle(exam);
   const releaseConfigured=!!(exam?.admitReleaseMs??exam?.admitRelease);
   if(releaseConfigured&&!life.admitReleased){alert("Admit card release date/time has not been reached.");return}
@@ -3385,6 +3385,7 @@ ${esc(
     if(!app.exists()){showMsg($("#resultMsg"),"Application not found.",true);return}
     const appData=app.data();
     v.authUid=appData.authUid;
+    v.examId=appData.examId||v.examId||"default";
     const max=v.maximumMarks===""?null:Number(v.maximumMarks);
     const final=v.finalMarks===""?Number(v.marksObtained||0):Number(v.finalMarks);
     if(max!=null&&(!Number.isFinite(max)||max<=0)){showMsg($("#resultMsg"),"Maximum marks must be greater than zero.",true);return}
@@ -3443,36 +3444,23 @@ async function editResult(id){
 
 async function toggleResult(id){
 
-  const s=await getDoc(
-    doc(db,"results",id)
-  );
-
+  const s=await getDoc(doc(db,"results",id));
+  if(!s.exists()){alert("Result not found.");return}
   const x=s.data();
-
-  await updateDoc(
-    doc(db,"results",id),
-    {
-      published:!x.published,
-      status:x.published
-        ?"Draft"
-        :x.status,
-      publishedAt:x.published
-        ?null
-        :serverTimestamp(),
-      updatedAt:serverTimestamp()
-    }
-  );
-
-  await log(
-    x.published
-      ?"RESULT_UNPUBLISHED"
-      :"RESULT_PUBLISHED",
-    id,
-    {
-      revision:x.revision||1
-    }
-  );
-
+  if(x.published){
+    await updateDoc(doc(db,"results",id),{published:false,status:"Draft",publishedAt:null,updatedAt:serverTimestamp()});
+    await log("RESULT_UNPUBLISHED",id,{revision:x.revision||1});
+    resultList();
+    return;
+  }
+  const examSnap=x.examId?await getDoc(doc(db,"exams",x.examId)):null;
+  const exam=examSnap?.exists()?{id:examSnap.id,...examSnap.data()}:null;
+  const life=examLifecycle(exam);
+  const releaseConfigured=!!(exam?.resultReleaseMs??exam?.resultRelease);
+  if(releaseConfigured&&!life.resultReleased){alert("Result release date/time has not been reached.");return}
+  if(x.maximumMarks!=null&&x.finalMarks!=null&&Number(x.finalMarks)>Number(x.maximumMarks)){alert("Invalid result: final marks exceed maximum marks.");return}
+  await updateDoc(doc(db,"results",id),{published:true,status:x.status||"Published",publishedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+  await log("RESULT_PUBLISHED",id,{revision:x.revision||1,releaseChecked:true});
   resultList();
 }
 
