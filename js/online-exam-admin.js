@@ -50,7 +50,7 @@ async function onlineExamConfig(id=null){
       <label>Marks / Question<input name="onlineExamMarksPerQuestion" type="number" min="0" step="0.01" value="${esc(x.onlineExamMarksPerQuestion??1)}" required></label>
       <label>Negative Marks / Wrong<input name="onlineExamNegativeMark" type="number" min="0" step="0.01" value="${esc(x.onlineExamNegativeMark??0)}" required></label>
       <label>Pass Marks<input name="onlineExamPassMarks" type="number" min="0" step="0.01" value="${esc(x.onlineExamPassMarks||0)}"></label>
-      <label>Maximum Attempts<input name="onlineExamMaxAttempts" type="number" min="1" max="5" value="${esc(x.onlineExamMaxAttempts||1)}"></label>
+      <label>Maximum Attempts<input name="onlineExamMaxAttempts" type="number" min="1" max="1" value="1"></label>
       <label class="check"><input name="onlineExamShuffle" type="checkbox" ${x.onlineExamShuffle!==false?"checked":""}> Shuffle questions</label>
       <label class="check"><input name="onlineExamRequiresPayment" type="checkbox" ${x.onlineExamRequiresPayment===true?"checked":""}> Require successful payment</label>
       <label class="check"><input name="onlineExamPublished" type="checkbox" ${x.onlineExamPublished===true?"checked":""}> Publish exam</label>
@@ -68,7 +68,7 @@ async function onlineExamConfig(id=null){
       onlineExamMarksPerQuestion:Math.max(0,Number(v.onlineExamMarksPerQuestion||0)),
       onlineExamNegativeMark:Math.max(0,Number(v.onlineExamNegativeMark||0)),
       onlineExamPassMarks:Math.max(0,Number(v.onlineExamPassMarks||0)),
-      onlineExamMaxAttempts:Math.max(1,Math.min(5,Number(v.onlineExamMaxAttempts||1))),
+      onlineExamMaxAttempts:1,
       onlineExamShuffle:f.onlineExamShuffle.checked,
       onlineExamRequiresPayment:f.onlineExamRequiresPayment.checked,
       onlineExamPublished:f.onlineExamPublished.checked,
