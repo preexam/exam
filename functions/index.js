@@ -158,13 +158,17 @@ exports.gradeOnlineExamAttempt=onDocumentWritten("onlineAttempts/{attemptId}",as
   const examSnap=await db.doc(`exams/${a.examId}`).get();
   if(!examSnap.exists)return null;
   const exam=examSnap.data();
-  const keysSnap=await db.collection("onlineAnswerKeys").doc(a.examId).collection("items").get();
+  const paperSnap=await after.ref.collection("questions").get();
   const answers=a.answers||{};
   let attempted=0,correct=0,wrong=0,score=0,maxMarks=0;
-  keysSnap.forEach(s=>{
-    const k=s.data(), selected=answers[s.id];
-    const marks=Number(k.marks??exam.onlineExamMarksPerQuestion??1);
-    maxMarks+=Math.max(0,marks);
+  const paper=paperSnap.docs.map(s=>({id:s.id,...s.data()}));
+  const keySnaps=await Promise.all(paper.map(q=>db.doc(`onlineAnswerKeys/${a.examId}/items/${q.id}`).get()));
+  paper.forEach((q,i)=>{
+    const keySnap=keySnaps[i];
+    if(!keySnap.exists)throw new Error(`Missing answer key for ${q.id}`);
+    const k=keySnap.data(), selected=answers[q.id];
+    const marks=Math.max(0,Number(k.marks??q.marks??exam.onlineExamMarksPerQuestion??1));
+    maxMarks+=marks;
     if(!selected)return;
     attempted++;
     if(String(selected).toUpperCase()===String(k.correct||"").toUpperCase()){
