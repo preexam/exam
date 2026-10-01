@@ -1,4 +1,4 @@
-import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";
+import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";\nimport {onlineExamAdmin} from "./online-exam-admin.js";
 
 const $=s=>document.querySelector(s);
 const panel=$("#panel");
@@ -13,7 +13,7 @@ const TABS=[
   ["documents","Documents"],
   ["admit","Admit Cards"],
   ["centres","Centres & Roll"],
-  ["results","Results"],
+  ["results","Results"],\n  ["onlineExam","Online Exam"],
   ["notices","Notices"],
   ["reports","Reports & Export"],
   ["admins","Admin Roles"],
