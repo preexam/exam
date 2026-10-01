@@ -75,6 +75,7 @@ async function onlineExamConfig(id=null){
       updatedAt:serverTimestamp()
     };
     if(update.onlineExamNegativeMark>update.onlineExamMarksPerQuestion) return showMsg($("#oeCfgMsg"),"Negative marks cannot exceed marks per question.",true);
+    if(update.onlineExamPublished){const current=await getDoc(doc(db,"exams",eid));const count=Number(current.data()?.questionCount||0);if(count<update.onlineExamTotalQuestions)return showMsg($("#oeCfgMsg"),"Add enough active questions before publishing.",true)}
     await setDoc(doc(db,"exams",eid),update,{merge:true});
     showMsg($("#oeCfgMsg"),"Online exam configuration saved.");
   };
