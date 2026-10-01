@@ -115,9 +115,15 @@ exports.initializeOnlineExamAttempt=onDocumentWritten("onlineAttempts/{attemptId
   if(!after?.exists)return null;
   const a=after.data();
   if(a.status!=="Starting"||a.startedAt||a.expiresAt)return null;
+  if(event.params.attemptId!==`${a.examId}_${a.applicationNumber}`)return null;
+  const appSnap=await db.doc(`applications/${a.applicationNumber}`).get();
+  if(!appSnap.exists)return null;
+  const app=appSnap.data();
+  if(app.authUid!==a.authUid||!["Final Submitted","Approved"].includes(app.status))return null;
   const examSnap=await db.doc(`exams/${a.examId}`).get();
-  if(!examSnap.exists||examSnap.data().onlineExamEnabled!==true)return null;
+  if(!examSnap.exists||examSnap.data().onlineExamEnabled!==true||examSnap.data().onlineExamPublished!==true)return null;
   const exam=examSnap.data();
+  if(exam.onlineExamRequiresPayment===true&&app.paymentStatus!=="Successful")return null;
   const duration=Math.max(1,Math.min(600,Number(exam.onlineExamDuration||60)));
   const now=admin.firestore.Timestamp.now();
   const expires=admin.firestore.Timestamp.fromMillis(now.toMillis()+duration*60000);
