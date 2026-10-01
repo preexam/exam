@@ -1833,6 +1833,16 @@ async function formBuilder(){
   window.__formFieldEnabled={
     ...(settingsData.formFieldEnabled||{})
   };
+  window.__formSections={
+    personal:settingsData.formSections?.personal!==false,
+    address:settingsData.formSections?.address!==false,
+    education:settingsData.formSections?.education!==false,
+    category:settingsData.formSections?.category!==false,
+    other:settingsData.formSections?.other!==false,
+    photo:settingsData.formSections?.photo!==false,
+    documents:settingsData.formSections?.documents!==false,
+    declaration:settingsData.formSections?.declaration!==false
+  };
 
   panel.innerHTML=`
     <h2>Application Form Builder</h2>
@@ -1847,6 +1857,19 @@ async function formBuilder(){
     </div>
 
     <p id="formSettingsMsg" class="message"></p>
+    <div class="card" style="margin:14px 0">
+      <h3>Student Form Sections</h3>
+      <p class="muted">Enable only the categories that candidates should see in their application. Disabled sections are hidden from the candidate form.</p>
+      <div class="form-grid">
+        ${check("Personal Details","section_personal",window.__formSections.personal)}
+        ${check("Address Details","section_address",window.__formSections.address)}
+        ${check("Education & Educational Qualification","section_education",window.__formSections.education)}
+        ${check("Category / Other Details","section_category",window.__formSections.category)}
+        ${check("Photo & Signature","section_photo",window.__formSections.photo)}
+        ${check("Documents","section_documents",window.__formSections.documents)}
+        ${check("Declaration","section_declaration",window.__formSections.declaration)}
+      </div>
+    </div>
     <div id="fieldTable"></div>
 
     <h3 class="section-title">Add Custom Field</h3>
@@ -1912,6 +1935,8 @@ async function saveStudentFormSettings(){
     enabled[input.dataset.builtinField]=input.checked;
   });
 
+  const sectionKeys=["personal","address","education","category","photo","documents","declaration"];
+  const formSections=Object.fromEntries(sectionKeys.map(k=>[k,!!document.querySelector(`[name="section_${k}"]`)?.checked]));
   const batch=writeBatch(db);
 
   document.querySelectorAll("[data-custom-field-toggle]").forEach(input=>{
@@ -1925,6 +1950,7 @@ async function saveStudentFormSettings(){
     doc(db,"settings","portal"),
     {
       formFieldEnabled:enabled,
+      formSections,
       updatedAt:serverTimestamp()
     },
     {merge:true}
@@ -1932,7 +1958,7 @@ async function saveStudentFormSettings(){
 
   await batch.commit();
   await log("STUDENT_FORM_FIELDS_UPDATED","",{enabledFields:enabled});
-  showMsg($("#formSettingsMsg"),"Student form settings saved.");
+  showMsg($("#formSettingsMsg"),"Student form fields and section settings saved.");
   formBuilder();
 }
 
