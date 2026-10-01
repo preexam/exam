@@ -1,4 +1,5 @@
-import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";\nimport {onlineExamAdmin} from "./online-exam-admin.js";
+import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";
+import {onlineExamAdmin} from "./online-exam-admin.js";
 
 const $=s=>document.querySelector(s);
 const panel=$("#panel");
@@ -13,7 +14,8 @@ const TABS=[
   ["documents","Documents"],
   ["admit","Admit Cards"],
   ["centres","Centres & Roll"],
-  ["results","Results"],\n  ["onlineExam","Online Exam"],
+  ["results","Results"],
+  ["onlineExam","Online Exam"],
   ["notices","Notices"],
   ["reports","Reports & Export"],
   ["admins","Admin Roles"],
@@ -758,6 +760,7 @@ async function listExams(){
       id:d.id,
       ...d.data()
     }));
+  window.__examCache=examCache;
 
   $("#examList").innerHTML=
     section(
@@ -1376,7 +1379,8 @@ function exportApps(){
         `"${String(v??"").replace(/"/g,'""')}"`
       ).join(",")
     )
-    .join("\n"),
+    .join("
+"),
 
     "text/csv"
   );
@@ -1467,7 +1471,8 @@ async function payments(){
           `"${String(v??"").replace(/"/g,'""')}"`
         ).join(",")
       )
-      .join("\n"),
+      .join("
+"),
 
       "text/csv"
     );
@@ -2647,7 +2652,8 @@ async function admit(){
           `"${String(v??"").replace(/"/g,'""')}"`
         ).join(",")
       )
-      .join("\n"),
+      .join("
+"),
 
       "text/csv"
     );
@@ -3539,7 +3545,8 @@ function parseCSV(text){
 
   const lines=
     text
-      .split(/\r?\n/)
+      .split(/\r?
+/)
       .filter(Boolean);
 
   if(!lines.length)return[];
@@ -4271,7 +4278,8 @@ async function exportCollection(
         `"${String(v??"").replace(/"/g,'""')}"`
       ).join(",")
     )
-    .join("\n"),
+    .join("
+"),
 
     "text/csv"
   );
