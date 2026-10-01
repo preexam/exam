@@ -1,7 +1,7 @@
 import {auth,db,doc,getDoc,getDocs,collection,query,orderBy,setDoc,updateDoc,serverTimestamp,signInWithEmailAndPassword,signOut,escapeHtml,showMsg,getSettings,examLifecycle} from "./firebase.js";
 
 const $=s=>document.querySelector(s);
-const examId=new URLSearchParams(location.search).get("exam");
+let examId=new URLSearchParams(location.search).get("exam");
 let exam=null,app=null,attempt=null,questions=[],index=0,timer=null,dirtyTimer=null;
 
 function esc(v){return escapeHtml(v??"")}
@@ -15,6 +15,7 @@ async function init(){
   if(!examId)return msg("Online exam link is missing.",true);
   try{
     const settings=await getSettings();
+    examId=examId||settings.activeExamId||"default";
     if(settings.maintenanceMode)return msg("Portal is under maintenance.",true);
     const es=await getDoc(doc(db,"exams",examId));
     if(!es.exists())return msg("Exam not found.",true);
