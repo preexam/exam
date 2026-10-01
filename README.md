@@ -14,7 +14,7 @@ This project contains the complete frontend structure for:
 - Exam centre management
 - Result
 - Online / Offline / Hybrid exam modes
-- Excel/CSV-style result import
+- CSV result import
 - Individual candidate result
 - Result PDF print/download
 - Admin dashboard
