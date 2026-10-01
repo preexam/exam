@@ -2,7 +2,7 @@ import {auth,db,doc,getDoc,getDocs,collection,query,orderBy,setDoc,updateDoc,ser
 
 const $=s=>document.querySelector(s);
 let examId=new URLSearchParams(location.search).get("exam");
-let exam=null,app=null,attempt=null,questions=[],index=0,timer=null,dirtyTimer=null;
+let exam=null,app=null,attempt=null,questions=[],index=0,timer=null,dirtyTimer=null,savePromise=Promise.resolve();
 
 function esc(v){return escapeHtml(v??"")}
 function msg(t,e=false){const el=$("#examApp");el.innerHTML=`<div class="card"><p class="${e?"danger-text":"message"}">${esc(t)}</p></div>`}
@@ -93,10 +93,10 @@ async function saveAnswer(qid,value){
   if(value)attempt.answers[qid]=value;else delete attempt.answers[qid];
   attempt.currentIndex=index;
   clearTimeout(dirtyTimer);
-  dirtyTimer=setTimeout(async()=>{try{await updateDoc(doc(db,"onlineAttempts",attempt.id),{answers:attempt.answers,currentIndex:index,updatedAt:serverTimestamp()})}catch(e){console.error(e)}},150);
+  dirtyTimer=setTimeout(()=>{savePromise=updateDoc(doc(db,"onlineAttempts",attempt.id),{answers:{...(attempt.answers||{})},currentIndex:index,updatedAt:serverTimestamp()}).catch(e=>{console.error("ANSWER SAVE ERROR:",e);throw e})},150);
   renderExam();
 }
-function startTimer(){clearInterval(timer);const tick=async()=>{const end=attempt.expiresAt?.toDate?attempt.expiresAt.toDate():new Date(attempt.expiresAt);const left=end.getTime()-Date.now();const el=$("#timer");if(!el)return;if(left<=0){clearInterval(timer);await submit(true);return}el.textContent=formatTime(left);el.classList.toggle("warn",left<300000)};tick();timer=setInterval(tick,1000)}
+async function flushAnswerSave(){clearTimeout(dirtyTimer);if(!attempt?.id)return;const data={answers:{...(attempt.answers||{})},currentIndex:index,updatedAt:serverTimestamp()};savePromise=updateDoc(doc(db,"onlineAttempts",attempt.id),data);await savePromise;}\nfunction startTimer(){clearInterval(timer);const tick=async()=>{const end=attempt.expiresAt?.toDate?attempt.expiresAt.toDate():new Date(attempt.expiresAt);const left=end.getTime()-Date.now();const el=$("#timer");if(!el)return;if(left<=0){clearInterval(timer);await submit(true);return}el.textContent=formatTime(left);el.classList.toggle("warn",left<300000)};tick();timer=setInterval(tick,1000)}
 async function confirmSubmit(){if(confirm(`Submit exam now? You answered ${answeredCount()} of ${questions.length} questions.`))await submit(false)}
 async function submit(auto){
   clearInterval(timer);
