@@ -48,4 +48,12 @@ describe("Firestore production security rules",function(){
     const c1=env.authenticatedContext("candidate-1").firestore();
     await assertFails(updateDoc(doc(c1,"onlineAttempts","ONLINE_APP100"),{score:999,graded:true}));
   });
+  it("enforces candidate-owned Storage paths and file constraints",async()=>{
+    const c1=env.authenticatedContext("candidate-1");
+    const c2=env.authenticatedContext("candidate-2");
+    const file=new Uint8Array([1,2,3,4]);
+    await assertSucceeds(uploadBytes(ref(c1.storage(),"applications/APP100/photo.jpg"),file,{contentType:"image/jpeg"}));
+    await assertFails(getMetadata(ref(c2.storage(),"applications/APP100/photo.jpg")));
+    await assertFails(uploadBytes(ref(c1.storage(),"applications/APP200/bad.txt"),file,{contentType:"text/plain"}));
+  });
 });
