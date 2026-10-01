@@ -1,4 +1,4 @@
-import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,isAdminUser} from "./firebase.js";
+import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";
 
 const $=s=>document.querySelector(s);
 const panel=$("#panel");
@@ -226,8 +226,8 @@ $("#changePassword").onclick=async()=>{
 
   if(!p)return;
 
-  if(p.length<6){
-    alert("Password must be at least 6 characters.");
+  if(p.length<12){
+    alert("Admin password must be at least 12 characters.");
     return;
   }
 
@@ -1291,56 +1291,53 @@ ${esc(
 
 async function changeAppStatus(id){
 
-  const st=prompt(
-    "New status",
-    window.__apps.find(
-      x=>x.id===id
-    )?.status||""
-  );
-
+  const allowed=[
+    "Registered",
+    "Application Incomplete",
+    "Payment Pending",
+    "Payment Successful",
+    "Final Submitted",
+    "Under Verification",
+    "Approved",
+    "Rejected",
+    "Correction Required"
+  ];
+  const current=window.__apps.find(x=>x.id===id)?.status||"";
+  const st=prompt("New status (allowed: "+allowed.join(", ")+")",current);
   if(!st)return;
-
-  await updateDoc(
-    doc(db,"applications",id),
-    {
-      status:st,
-      updatedAt:serverTimestamp()
-    }
-  );
-
-  await log(
-    "APPLICATION_STATUS_CHANGED",
-    id,
-    {status:st}
-  );
-
+  if(!allowed.includes(st)){alert("Invalid application status.");return}
+  if(st==="Correction Required"){
+    const app=window.__apps.find(x=>x.id===id);
+    const exam=examCache.find(x=>x.id===app?.examId);
+    if(!exam?.allowCorrection){alert("Correction is not enabled for this exam.");return}
+  }
+  await updateDoc(doc(db,"applications",id),{status:st,updatedAt:serverTimestamp()});
+  await log("APPLICATION_STATUS_CHANGED",id,{from:current,status:st});
   applications();
 }
 
 
 async function verifyApplication(id){
 
-  const ok=confirm(
-    "Mark application as Approved?"
-  );
-
+  const app=window.__apps.find(x=>x.id===id);
+  if(!app){alert("Application not found.");return}
+  if(!["Final Submitted","Under Verification"].includes(app.status)){
+    alert("Only a submitted application can be approved.");
+    return;
+  }
+  if(app.paymentStatus!=="Successful"){
+    alert("Payment must be successful before approval.");
+    return;
+  }
+  const ok=confirm("Mark application as Approved?");
   if(!ok)return;
-
-  await updateDoc(
-    doc(db,"applications",id),
-    {
-      status:"Approved",
-      verifiedBy:me.uid,
-      verifiedAt:serverTimestamp(),
-      updatedAt:serverTimestamp()
-    }
-  );
-
-  await log(
-    "APPLICATION_APPROVED",
-    id
-  );
-
+  await updateDoc(doc(db,"applications",id),{
+    status:"Approved",
+    verifiedBy:me.uid,
+    verifiedAt:serverTimestamp(),
+    updatedAt:serverTimestamp()
+  });
+  await log("APPLICATION_APPROVED",id);
   alert("Application approved.");
 }
 
