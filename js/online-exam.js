@@ -58,13 +58,13 @@ async function login(e){
 }
 
 async function loadQuestions(){
-  const s=await getDocs(query(collection(db,"onlineQuestions",examId,"items"),orderBy("order","asc")));
-  questions=s.docs.filter(d=>d.data().active!==false).map(d=>({id:d.id,...d.data()}));
-  if(!questions.length)return msg("No questions have been published for this examination.",true);
-  if(exam.onlineExamShuffle&&attempt.status==="Starting")questions=shuffled(questions);
-  const total=Number(exam.onlineExamTotalQuestions||questions.length);
-  questions=questions.slice(0,Math.min(total,questions.length));
-  if(attempt.status==="Starting"||!attempt.startedAt){const startedAt=new Date();const expiresAt=new Date(startedAt.getTime()+Number(exam.onlineExamDuration||60)*60000);await updateDoc(doc(db,"onlineAttempts",attempt.id),{status:"In Progress",startedAt,expiresAt,updatedAt:serverTimestamp()});const fresh=await getDoc(doc(db,"onlineAttempts",attempt.id));attempt={id:fresh.id,...fresh.data()}}
+  let s=await getDocs(query(collection(db,"onlineAttempts",attempt.id,"questions"),orderBy("order","asc")));
+  if(!s.size){
+    await new Promise(r=>setTimeout(r,1200));
+    s=await getDocs(query(collection(db,"onlineAttempts",attempt.id,"questions"),orderBy("order","asc")));
+  }
+  questions=s.docs.map(d=>({id:d.id,...d.data()}));
+  if(!questions.length)return msg("Exam paper is still being prepared. Please refresh once.",true);
   index=Math.min(Number(attempt.currentIndex||0),questions.length-1);
   renderExam();
   startTimer();
