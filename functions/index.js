@@ -140,6 +140,10 @@ exports.gradeOnlineExamAttempt=onDocumentWritten("onlineAttempts/{attemptId}",as
   const passMarks=Number(exam.onlineExamPassMarks||0);
   const passed=passMarks>0?score>=passMarks:true;
   const appId=a.applicationNumber;
+  const appSnap=await db.doc(`applications/${appId}`).get();
+  const appData=appSnap.exists?appSnap.data():{};
+  const admitSnap=await db.doc(`admitCards/${appId}`).get();
+  const admitData=admitSnap.exists?admitSnap.data():{};
   const resultRef=db.doc(`results/${appId}`);
   const resultSnap=await resultRef.get();
   const old=resultSnap.exists?resultSnap.data():{};
@@ -164,9 +168,9 @@ exports.gradeOnlineExamAttempt=onDocumentWritten("onlineAttempts/{attemptId}",as
       authUid:a.authUid,
       examId:a.examId,
       examName:exam.examName||"",
-      rollNumber:old.rollNumber||"",
-      candidateName:old.candidateName||"",
-      examPost:old.examPost||"",
+      rollNumber:admitData.rollNumber||old.rollNumber||"",
+      candidateName:appData.personal?.fullName||old.candidateName||"",
+      examPost:appData.personal?.examPost||old.examPost||"",
       marksObtained:score,
       finalMarks:score,
       maximumMarks:maxMarks,
