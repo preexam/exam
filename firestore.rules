@@ -62,7 +62,7 @@ service cloud.firestore {
         && request.resource.data.paymentStatus == resource.data.paymentStatus
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'personal','address','education','category','other','documents','status',
+          'personal','address','education','category','other','documents','documentVerification','status',
           'declarationAccepted','updatedAt','finalSubmittedAt'
         ])
       );

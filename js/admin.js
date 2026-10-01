@@ -606,30 +606,79 @@ async function candidates(){
 async function viewCandidate(id){
   const s=await getDoc(doc(db,"candidates",id));
   if(!s.exists()){alert("Candidate not found.");return;}
-  const x=s.data();
+  const x={id:s.id,...s.data()};
   panel.innerHTML=`
-    <div class="actions no-print">
-      <button class="btn" id="backCandidates">Back</button>
-      <button class="btn" id="printCandidate">Print</button>
-    </div>
+    <div class="actions no-print"><button class="btn" id="backCandidates">Back</button><button class="btn" id="printCandidate">Print</button>${x.applicationNumber?'<button class="btn primary" id="candidateDocuments">Verify Documents</button>':""}</div>
     <h2>Candidate: ${esc(x.name||x.applicationNumber||id)}</h2>
-    <div class="grid-3">
-      <div class="card"><b>Application</b><p>${esc(x.applicationNumber||"")}</p></div>
-      <div class="card"><b>Mobile</b><p>${esc(x.mobile||"")}</p></div>
-      <div class="card"><b>Status</b><p>${esc(x.status||"")}</p></div>
-    </div>
-    ${Object.entries(x).map(([k,v])=>`
-      <div class="card"><b>${esc(k)}</b><pre style="white-space:pre-wrap">${esc(typeof v==="object"?JSON.stringify(v,null,2):v)}</pre></div>
-    `).join("")}
+    <div class="grid-3"><div class="card"><b>Application</b><p>${esc(x.applicationNumber||"")}</p></div><div class="card"><b>Mobile</b><p>${esc(x.mobile||"")}</p></div><div class="card"><b>Status</b><p>${esc(x.status||"")}</p></div></div>
+    <section class="card"><h3>Candidate Status</h3><div class="toolbar"><select id="candidateStatus">${["Registered","Active","Suspended","Locked"].map(st=>`<option ${x.status===st?"selected":""}>${st}</option>`).join("")}</select><button class="btn primary" id="saveCandidateStatus">Save Candidate Status</button></div><p id="candidateMsg" class="message"></p></section>
+    ${Object.entries(x).filter(([k])=>k!=="id").map(([k,v])=>`<div class="card"><b>${esc(k)}</b><pre style="white-space:pre-wrap">${esc(typeof v==="object"?JSON.stringify(v,null,2):v)}</pre></div>`).join("")}
   `;
   $("#backCandidates").onclick=()=>loadTab("candidates");
   $("#printCandidate").onclick=()=>window.print();
+  $("#saveCandidateStatus").onclick=async()=>{
+    const status=$("#candidateStatus").value;
+    await updateDoc(doc(db,"candidates",id),{status,updatedAt:serverTimestamp()});
+    await log("CANDIDATE_STATUS_CHANGED",id,{status});
+    showMsg($("#candidateMsg"),"Candidate status saved.");
+    candidates();
+  };
+  if(x.applicationNumber)$("#candidateDocuments").onclick=()=>verifyCandidateDocuments(x.applicationNumber);
+}
+
+async function verifyCandidateDocuments(applicationNumber){
+  const s=await getDoc(doc(db,"applications",applicationNumber));
+  if(!s.exists()){alert("Application not found.");return;}
+  const a=s.data(),docs=a.documents||{},verification=a.documentVerification||{};
+  const entries=Object.entries(docs).filter(([,url])=>typeof url==="string"&&url);
+  panel.innerHTML=`
+    <div class="actions no-print"><button class="btn" id="backCandidateDocs">Back to Candidate</button></div>
+    <h2>Document Verification: ${esc(applicationNumber)}</h2>
+    <p class="muted">Review each uploaded document independently. Verification is stored on the application and does not change the uploaded file.</p>
+    <div class="card">${entries.length?entries.map(([key,url])=>{const v=verification[key]||{};return `<div class="card"><div class="actions"><b>${esc(key)}</b><a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">Open Document</a></div><div class="form-grid"><label>Status<select data-doc-status="${esc(key)}">${["Pending","Verified","Rejected"].map(st=>`<option ${v.status===st?"selected":""}>${st}</option>`).join("")}</select></label><label>Verification Note<input data-doc-note="${esc(key)}" value="${esc(v.note||"")}" placeholder="Optional note"></label></div></div>`}).join(""):"<p>No uploaded documents are available for verification.</p>"}</div>
+    <div class="actions"><button class="btn primary" id="saveDocumentVerification">Save Document Verification</button></div><p id="docVerifyMsg" class="message"></p>
+  `;
+  $("#backCandidateDocs").onclick=()=>loadTab("candidates");
+  $("#saveDocumentVerification").onclick=async()=>{
+    const next={};
+    document.querySelectorAll("[data-doc-status]").forEach(el=>{
+      const key=el.dataset.docStatus;
+      const note=[...document.querySelectorAll("[data-doc-note]")].find(input=>input.dataset.docNote===key)?.value.trim()||"";
+      next[key]={status:el.value,note,verifiedBy:me.uid,verifiedAt:serverTimestamp()};
+    });
+    await updateDoc(doc(db,"applications",applicationNumber),{documentVerification:next,updatedAt:serverTimestamp()});
+    await log("DOCUMENT_VERIFICATION_UPDATED",applicationNumber,{count:Object.keys(next).length});
+    showMsg($("#docVerifyMsg"),"Document verification saved.");
+  };
 }
 
 
 /* =========================================================
    EXAM MANAGEMENT
    ========================================================= */
+
+function validateExamLifecycle(v,current=null){
+  const errors=[];
+  const ms=value=>{const n=Date.parse(value||"");return Number.isFinite(n)?n:null};
+  const start=v.applicationStartMs??ms(v.applicationStart),end=v.applicationEndMs??ms(v.applicationEnd);
+  const payment=v.paymentEndMs??ms(v.paymentEnd),correctionStart=v.correctionStartMs??ms(v.correctionStart),correctionEnd=v.correctionEndMs??ms(v.correctionEnd);
+  const admit=v.admitReleaseMs??ms(v.admitRelease),result=v.resultReleaseMs??ms(v.resultRelease),examDate=ms(v.examDate);
+  if(start!=null&&end!=null&&start>=end)errors.push("Application start must be before the application last date.");
+  if(payment!=null&&end!=null&&(payment<start||payment>end))errors.push("Payment last date must be within the application window.");
+  if((correctionStart==null)!=(correctionEnd==null))errors.push("Both correction start and correction end are required together.");
+  if(correctionStart!=null&&correctionEnd!=null&&correctionStart>=correctionEnd)errors.push("Correction start must be before correction end.");
+  if(correctionStart!=null&&end!=null&&correctionStart<end)errors.push("Correction window cannot start before applications close.");
+  if(examDate!=null&&end!=null&&examDate<end)errors.push("Exam date cannot be before the application last date.");
+  if(admit!=null&&examDate!=null&&admit>=examDate)errors.push("Admit-card release must be before the exam date.");
+  if(result!=null&&examDate!=null&&result<examDate)errors.push("Result release cannot be before the exam date.");
+  const minAge=v.minAge===""||v.minAge==null?null:Number(v.minAge),maxAge=v.maxAge===""||v.maxAge==null?null:Number(v.maxAge);
+  if(minAge!=null&&(!Number.isFinite(minAge)||minAge<0))errors.push("Minimum age must be a valid non-negative number.");
+  if(maxAge!=null&&(!Number.isFinite(maxAge)||maxAge<0))errors.push("Maximum age must be a valid non-negative number.");
+  if(minAge!=null&&maxAge!=null&&minAge>maxAge)errors.push("Minimum age cannot be greater than maximum age.");
+  if(current?.status==="Archived"&&v.status!=="Archived")errors.push("An archived exam cannot be reopened.");
+  if(v.status==="Completed"&&examDate!=null&&examDate>Date.now())errors.push("A future exam cannot be marked Completed.");
+  return errors;
+}
 
 async function exams(){
 
@@ -853,6 +902,12 @@ async function exams(){
 
     v.admitPdf=
       bool(e.target,"admitPdf");
+
+    const lifecycleErrors=validateExamLifecycle(v,examCache.find(x=>x.id===v.examCode));
+    if(lifecycleErrors.length){
+      showMsg($("#examMsg"),lifecycleErrors.join(" "),true);
+      return;
+    }
 
     v.updatedAt=serverTimestamp();
     v.createdAt=serverTimestamp();
@@ -2124,6 +2179,7 @@ async function documents(){
     </form>
 
     <div id="docTable"></div>
+    <p id="docMsg" class="message"></p>
   `;
 
   $("#docForm").onsubmit=async e=>{
@@ -2140,6 +2196,11 @@ async function documents(){
 
     v.maxFiles=
       Number(v.maxFiles||1);
+
+    if(v.maxSize<1||v.maxFiles<1){
+      showMsg($("#docMsg"),"Maximum size and maximum files must both be at least 1.",true);
+      return;
+    }
 
     v.order=
       Date.now();
