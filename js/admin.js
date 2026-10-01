@@ -689,6 +689,14 @@ async function exams(){
 
     const v=formObj(e.target);
 
+    const toMs=value=>{const n=Date.parse(value||"");return Number.isFinite(n)?n:null};
+    v.applicationStartMs=toMs(v.applicationStart);
+    v.applicationEndMs=toMs(v.applicationEnd);
+    v.correctionStartMs=toMs(v.correctionStart);
+    v.correctionEndMs=toMs(v.correctionEnd);
+    v.admitReleaseMs=toMs(v.admitRelease);
+    v.resultReleaseMs=toMs(v.resultRelease);
+
     v.allowCorrection=
       bool(e.target,"allowCorrection");
 
