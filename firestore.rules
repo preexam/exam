@@ -92,9 +92,9 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.status in ['Final Submitted','Approved']
         && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId))
         && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamEnabled == true
+        && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamPublished == true
         && (get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamRequiresPayment != true
-          || get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.paymentStatus == 'Successful')
-        && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamPublished == true;
+          || get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.paymentStatus == 'Successful');
       allow get: if permission('results') || (signedIn() && resource.data.authUid == request.auth.uid);
       allow list: if permission('results');
       allow update: if permission('results') || (
@@ -106,8 +106,16 @@ service cloud.firestore {
         && request.resource.data.applicationNumber == resource.data.applicationNumber
         && request.resource.data.startedAt == resource.data.startedAt
         && request.resource.data.expiresAt == resource.data.expiresAt
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers','currentIndex','status','submittedAt','autoSubmitted','updatedAt'])
-        && (request.resource.data.status == 'In Progress' || (request.resource.data.status == 'Submitted' && request.resource.data.submittedAt != null))
+        && (
+          (request.resource.data.status == 'In Progress'
+            && request.time <= resource.data.expiresAt
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers','currentIndex','updatedAt']))
+          ||
+          (request.resource.data.status == 'Submitted'
+            && request.resource.data.answers == resource.data.answers
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','submittedAt','autoSubmitted','updatedAt','currentIndex'])
+            && request.resource.data.submittedAt != null)
+        )
       );
       allow delete: if permission('results');
       match /questions/{questionId} {
