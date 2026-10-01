@@ -3570,9 +3570,7 @@ function parseCSV(text){
 
   const lines=
     text
-      .split(/\r?
-/)
-      .filter(Boolean);
+      .split(/\r?\n/);
 
   if(!lines.length)return[];
 
