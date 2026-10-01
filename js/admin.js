@@ -3474,6 +3474,7 @@ async function toggleResult(id){
   const releaseConfigured=!!(exam?.resultReleaseMs??exam?.resultRelease);
   if(releaseConfigured&&!life.resultReleased){alert("Result release date/time has not been reached.");return}
   if(x.maximumMarks!=null&&x.finalMarks!=null&&Number(x.finalMarks)>Number(x.maximumMarks)){alert("Invalid result: final marks exceed maximum marks.");return}
+  if(!String(x.status||"").trim()||["Draft","Pending"].includes(String(x.status))){alert("Set a final result status before publishing.");return}
   await updateDoc(doc(db,"results",id),{published:true,status:x.status||"Published",publishedAt:serverTimestamp(),updatedAt:serverTimestamp()});
   await log("RESULT_PUBLISHED",id,{revision:x.revision||1,releaseChecked:true});
   resultList();
