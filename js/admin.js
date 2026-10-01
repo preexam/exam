@@ -1901,7 +1901,7 @@ function renderFields(){
           <button class="btn small" data-del-field="${esc(x.id)}">Delete</button>
         </td>
       </tr>
-    `);
+    `)];
 
   $("#fieldTable").innerHTML=section(
     "Student Form Controls",
