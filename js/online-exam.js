@@ -100,7 +100,14 @@ function startTimer(){clearInterval(timer);const tick=async()=>{const end=attemp
 async function confirmSubmit(){if(confirm(`Submit exam now? You answered ${answeredCount()} of ${questions.length} questions.`))await submit(false)}
 async function submit(auto){
   clearInterval(timer);
-  try{await updateDoc(doc(db,"onlineAttempts",attempt.id),{status:"Submitted",submittedAt:serverTimestamp(),autoSubmitted:auto,currentIndex:index,updatedAt:serverTimestamp()});const fresh=await getDoc(doc(db,"onlineAttempts",attempt.id));attempt={id:fresh.id,...fresh.data()};renderCompleted()}catch(e){alert("Submission failed. Please retry.");startTimer()}}
+  try{
+    try{await updateDoc(doc(db,"onlineAttempts",attempt.id),{answers:attempt.answers||{},currentIndex:index,updatedAt:serverTimestamp()})}catch{}
+    await updateDoc(doc(db,"onlineAttempts",attempt.id),{status:"Submitted",submittedAt:serverTimestamp(),autoSubmitted:auto,currentIndex:index,updatedAt:serverTimestamp()});
+    const fresh=await getDoc(doc(db,"onlineAttempts",attempt.id));
+    attempt={id:fresh.id,...fresh.data()};
+    renderCompleted()
+  }catch(e){alert("Submission failed. Please retry.");startTimer()}
+}
 async function renderCompleted(){
   clearInterval(timer);
   const s=await getDoc(doc(db,"onlineAttempts",attempt.id));if(s.exists())attempt={id:s.id,...s.data()};
