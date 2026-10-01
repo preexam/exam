@@ -89,8 +89,11 @@ service cloud.firestore {
         && request.resource.data.applicationNumber != null
         && exists(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber))
         && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.authUid == request.auth.uid
+        && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.status in ['Final Submitted','Approved']
         && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId))
         && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamEnabled == true
+        && (get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamRequiresPayment != true
+          || get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.paymentStatus == 'Successful')
         && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamPublished == true;
       allow get: if permission('results') || (signedIn() && resource.data.authUid == request.auth.uid);
       allow list: if permission('results');
