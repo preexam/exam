@@ -3806,37 +3806,26 @@ async function parseImport(commit){
 
     if(!app.exists())continue;
 
+    const marks=Number(x.marksObtained||0);
+    const maximum=Number(x.maximumMarks||0);
+    const percentage=Number(x.percentage||0);
+    if(!Number.isFinite(maximum)||maximum<=0||!Number.isFinite(marks)||marks<0||marks>maximum||!Number.isFinite(percentage)||percentage<0||percentage>100){
+      showMsg($("#importMsg"),"Import stopped: one or more rows has invalid marks/maximum/percentage.",true);
+      return;
+    }
+    const existingResult=await getDoc(doc(db,"results",x.applicationNumber));
     const n={
       ...x,
-
-      marksObtained:
-        Number(x.marksObtained||0),
-
-      maximumMarks:
-        Number(x.maximumMarks||0),
-
-      percentage:
-        Number(x.percentage||0),
-
-      rank:
-        x.rank
-          ?Number(x.rank)
-          :null,
-
-      percentile:
-        x.percentile
-          ?Number(x.percentile)
-          :null,
-
+      marksObtained:marks,
+      maximumMarks:maximum,
+      percentage,
+      rank:x.rank?Number(x.rank):null,
+      percentile:x.percentile?Number(x.percentile):null,
       published:false,
-
-      revision:1,
-
-      authUid:
-        app.data().authUid,
-
-      examPost:
-        app.data().personal?.examPost||"",
+      revision:(existingResult.exists()?Number(existingResult.data().revision||0):0)+1,
+      authUid:app.data().authUid,
+      examId:app.data().examId||"default",
+      examPost:app.data().personal?.examPost||"",
 
       updatedAt:
         serverTimestamp(),
