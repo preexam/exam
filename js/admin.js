@@ -17,6 +17,7 @@ const TAB_GROUPS=[
   {
     label:"Applications",
     items:[
+      ["candidates","Candidates","applications"],
       ["applications","Applications","applications"],
       ["payments","Payments","payments"],
       ["documents","Documents","documents"],
@@ -425,6 +426,7 @@ async function loadTab(tab){
 
   ({
     dashboard,
+    candidates,
     exams,
     applications,
     payments,
@@ -482,7 +484,7 @@ async function dashboard(){
   const c=await counts();
 
   $("#stats").innerHTML=[
-    ["Candidates",c.candidates,"applications"],
+    ["Candidates",c.candidates,"candidates"],
     ["Applications",c.applications,"applications"],
     ["Payments",c.payments,"payments"],
     ["Admit Cards",c.admitCards,"admit"],
@@ -544,6 +546,84 @@ async function dashboard(){
 
     </div>
   `;
+}
+
+
+/* =========================================================
+   CANDIDATE DIRECTORY
+   ========================================================= */
+
+async function candidates(){
+
+  if(!guard("applications"))return;
+
+  const s=await getDocs(collection(db,"candidates"));
+
+  window.__candidates=s.docs.map(d=>({
+    id:d.id,
+    ...d.data()
+  }));
+
+  panel.innerHTML=`
+    <h2>Candidate Directory</h2>
+    <p class="muted">Registered candidates and their application details.</p>
+    <div class="toolbar">
+      <input id="candidateSearch" placeholder="Search application / name / mobile">
+      <button class="btn" id="candidateRefresh">Refresh</button>
+    </div>
+    <div id="candidateTable"></div>
+  `;
+
+  const render=()=>{
+    const q=(document.querySelector("#candidateSearch").value||"").trim().toLowerCase();
+    const rows=(window.__candidates||[]).filter(x=>
+      [x.id,x.applicationNumber,x.name,x.mobile,x.status]
+        .some(v=>String(v||"").toLowerCase().includes(q))
+    );
+    $("#candidateTable").innerHTML=table(
+      ["Application","Candidate","Mobile","Status","Registered","Actions"],
+      rows.map(x=>`
+        <tr>
+          <td>${esc(x.applicationNumber||"")}</td>
+          <td>${esc(x.name||"")}</td>
+          <td>${esc(x.mobile||"")}</td>
+          <td>${esc(x.status||"")}</td>
+          <td>${esc(toDate(x.createdAt)||"")}</td>
+          <td><button class="btn small" data-view-candidate="${esc(x.id)}">View</button></td>
+        </tr>
+      `)
+    );
+    $("#candidateTable").querySelectorAll("[data-view-candidate]").forEach(b=>
+      b.onclick=()=>viewCandidate(b.dataset.viewCandidate)
+    );
+  };
+
+  $("#candidateSearch").oninput=render;
+  $("#candidateRefresh").onclick=()=>candidates();
+  render();
+}
+
+async function viewCandidate(id){
+  const s=await getDoc(doc(db,"candidates",id));
+  if(!s.exists()){alert("Candidate not found.");return;}
+  const x=s.data();
+  panel.innerHTML=`
+    <div class="actions no-print">
+      <button class="btn" id="backCandidates">Back</button>
+      <button class="btn" id="printCandidate">Print</button>
+    </div>
+    <h2>Candidate: ${esc(x.name||x.applicationNumber||id)}</h2>
+    <div class="grid-3">
+      <div class="card"><b>Application</b><p>${esc(x.applicationNumber||"")}</p></div>
+      <div class="card"><b>Mobile</b><p>${esc(x.mobile||"")}</p></div>
+      <div class="card"><b>Status</b><p>${esc(x.status||"")}</p></div>
+    </div>
+    ${Object.entries(x).map(([k,v])=>`
+      <div class="card"><b>${esc(k)}</b><pre style="white-space:pre-wrap">${esc(typeof v==="object"?JSON.stringify(v,null,2):v)}</pre></div>
+    `).join("")}
+  `;
+  $("#backCandidates").onclick=()=>loadTab("candidates");
+  $("#printCandidate").onclick=()=>window.print();
 }
 
 
@@ -2006,7 +2086,7 @@ async function documents(){
       )}
 
       <button class="btn primary">
-        Add Document
+        Save Document
       </button>
 
     </form>
@@ -2267,9 +2347,14 @@ async function centres(){
             true
           )}
 
-          <button class="btn primary">
+          <div class="actions">
+            <button type="button" class="btn" id="saveRollSettings">
+              Save Roll Settings
+            </button>
+            <button class="btn primary">
             Allocate & Generate Admit Drafts
           </button>
+          </div>
 
           <p
             id="allocMsg"
@@ -2388,6 +2473,26 @@ async function centres(){
         centres();
       }
     );
+
+  $("#saveRollSettings").onclick=async()=>{
+    const v=formObj($("#allocForm"));
+    if(!v.examId){showMsg($("#allocMsg"),"Select an exam first.",true);return;}
+    const rollStart=Number(v.rollStart||100001);
+    const rollWidth=Number(v.rollWidth||6);
+    if(!Number.isFinite(rollStart)||rollStart<0||!Number.isFinite(rollWidth)||rollWidth<1){
+      showMsg($("#allocMsg"),"Roll start/width is invalid.",true);
+      return;
+    }
+    await updateDoc(doc(db,"exams",v.examId),{
+      rollPrefix:v.rollPrefix||"",
+      rollStart,
+      rollWidth,
+      defaultCentreId:v.centreId||"",
+      updatedAt:serverTimestamp()
+    });
+    await log("ROLL_SETTINGS_SAVED",v.examId,{centreId:v.centreId||"",rollPrefix:v.rollPrefix||"",rollStart,rollWidth});
+    showMsg($("#allocMsg"),"Roll settings saved.");
+  };
 
   $("#allocForm").onsubmit=async e=>{
     e.preventDefault();
@@ -3959,7 +4064,7 @@ async function notices(){
       )}
 
       <button class="btn primary">
-        Publish Notice
+        Save Notice
       </button>
 
     </form>
