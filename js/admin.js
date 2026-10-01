@@ -2939,33 +2939,18 @@ async function editAdmit(id){
 
 async function toggleAdmit(id){
 
-  const s=await getDoc(
-    doc(db,"admitCards",id)
-  );
-
+  const s=await getDoc(doc(db,"admitCards",id));
+  if(!s.exists()){alert("Admit card not found.");return}
   const x=s.data();
-
-  await updateDoc(
-    doc(db,"admitCards",id),
-    {
-      published:!x.published,
-      status:x.published
-        ?"Draft"
-        :"Published",
-      publishedAt:x.published
-        ?null
-        :serverTimestamp(),
-      updatedAt:serverTimestamp()
-    }
-  );
-
-  await log(
-    x.published
-      ?"ADMIT_CARD_UNPUBLISHED"
-      :"ADMIT_CARD_PUBLISHED",
-    id
-  );
-
+  if(x.published){await updateDoc(doc(db,"admitCards",id),{published:false,status:"Draft",publishedAt:null,updatedAt:serverTimestamp()});await log("ADMIT_CARD_UNPUBLISHED",id);admit();return}
+  if(!x.rollNumber){alert("Roll number is required before publishing.");return}
+  const settings=await getSettings();
+  const exam=await getActiveExam(settings);
+  const life=examLifecycle(exam);
+  const releaseConfigured=!!(exam?.admitReleaseMs??exam?.admitRelease);
+  if(releaseConfigured&&!life.admitReleased){alert("Admit card release date/time has not been reached.");return}
+  await updateDoc(doc(db,"admitCards",id),{published:true,status:"Published",publishedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+  await log("ADMIT_CARD_PUBLISHED",id,{releaseChecked:true});
   admit();
 }
 
@@ -3397,9 +3382,16 @@ ${esc(
           v.applicationNumber
         )
       );
-
-    v.authUid=
-      app.data()?.authUid;
+    if(!app.exists()){showMsg($("#resultMsg"),"Application not found.",true);return}
+    const appData=app.data();
+    v.authUid=appData.authUid;
+    const max=v.maximumMarks===""?null:Number(v.maximumMarks);
+    const final=v.finalMarks===""?Number(v.marksObtained||0):Number(v.finalMarks);
+    if(max!=null&&(!Number.isFinite(max)||max<=0)){showMsg($("#resultMsg"),"Maximum marks must be greater than zero.",true);return}
+    if(!Number.isFinite(final)||(max!=null&&(final<0||final>max))){showMsg($("#resultMsg"),"Final marks are invalid.",true);return}
+    if(v.percentage!==""&&(!Number.isFinite(Number(v.percentage))||Number(v.percentage)<0||Number(v.percentage)>100)){showMsg($("#resultMsg"),"Percentage must be between 0 and 100.",true);return}
+    if(v.totalQuestions!==""&&Number(v.totalQuestions)<0){showMsg($("#resultMsg"),"Total questions cannot be negative.",true);return}
+    if(v.attempted!==""&&v.totalQuestions!==""&&Number(v.attempted)>Number(v.totalQuestions)){showMsg($("#resultMsg"),"Attempted questions cannot exceed total questions.",true);return}
 
     v.revision=
       (existing?.revision||0)+1;
