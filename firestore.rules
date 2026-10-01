@@ -37,6 +37,7 @@ service cloud.firestore {
       allow read: if activeAdmin() || owner(id);
       allow update: if permission('applications') || (
         owner(id)
+        && resource.data.status != 'Final Submitted'
         && request.resource.data.authUid == resource.data.authUid
         && request.resource.data.applicationNumber == resource.data.applicationNumber
         && request.resource.data.candidateId == resource.data.candidateId
