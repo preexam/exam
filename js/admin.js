@@ -2409,19 +2409,49 @@ async function allocateAdmitDrafts(v,form){
     )
   );
 
-  let n=
-    Number(
-      v.rollStart||100001
-    );
-
   let count=0;
 
   const prefix=
     v.rollPrefix||"";
 
+  const selectedCentre=
+    window.__centres.find(x=>x.id===v.centreId)||null;
+
+  if(!selectedCentre){
+    showMsg($("#allocMsg"),"Select a valid active centre.",true);
+    return;
+  }
+
+  if(selectedCentre.active===false){
+    showMsg($("#allocMsg"),"The selected centre is inactive.",true);
+    return;
+  }
+
+  const shiftCount=Math.max(
+    1,
+    String(selectedCentre.shifts||"1")
+      .split(",")
+      .map(x=>x.trim())
+      .filter(Boolean)
+      .length
+  );
+
+  const capacity=Number(selectedCentre.capacity||0);
+  const maxCapacity=capacity>0
+    ?capacity*shiftCount
+    :Number.MAX_SAFE_INTEGER;
+
+  const allocationRef=doc(
+    db,
+    "centreAllocations",
+    v.examId
+  );
+
   for(const d of snap.docs){
 
     const a=d.data();
+
+    if(a.examId!==v.examId)continue;
 
     if(
       v.approvedOnly!==undefined&&
@@ -2442,6 +2472,33 @@ async function allocateAdmitDrafts(v,form){
       existing.data().rollNumber
     )continue;
 
+    const allocationOk=await runTransaction(db,async tx=>{
+      const allocationSnap=await tx.get(allocationRef);
+      const counts={...(allocationSnap.exists()?allocationSnap.data().counts||{}:{})};
+      const used=Number(counts[v.centreId]||0);
+      if(used>=maxCapacity) return false;
+      counts[v.centreId]=used+1;
+      tx.set(
+        allocationRef,
+        {
+          examId:v.examId,
+          counts,
+          updatedAt:serverTimestamp()
+        },
+        {merge:true}
+      );
+      return true;
+    });
+
+    if(!allocationOk){
+      showMsg(
+        $("#allocMsg"),
+        `Centre capacity reached (${maxCapacity} seats including shifts). Remaining candidates were not allocated.`,
+        true
+      );
+      break;
+    }
+
     const counterRef=doc(db,"counters",`admit_${v.examId}`);
     const rollNumber=await runTransaction(db,async tx=>{
       const counterSnap=await tx.get(counterRef);
@@ -2458,10 +2515,7 @@ async function allocateAdmitDrafts(v,form){
           "0"
         );
 
-    const c=
-      window.__centres.find(
-        x=>x.id===v.centreId
-      )||{};
+
 
     await setDoc(
       doc(
@@ -2479,12 +2533,12 @@ async function allocateAdmitDrafts(v,form){
         examId:v.examId,
         rollNumber:roll,
         centreCode:v.centreId,
-        centreName:c.name||"",
-        centreAddress:c.address||"",
-        centreCity:c.city||"",
-        centreDistrict:c.district||"",
-        centreState:c.state||"",
-        centrePin:c.pin||"",
+        centreName:selectedCentre.name||"",
+        centreAddress:selectedCentre.address||"",
+        centreCity:selectedCentre.city||"",
+        centreDistrict:selectedCentre.district||"",
+        centreState:selectedCentre.state||"",
+        centrePin:selectedCentre.pin||"",
         published:false,
         status:"Draft",
         version:1,
@@ -3437,10 +3491,10 @@ async function resultImport(){
 
   $("#resultWork").innerHTML=`
 
-    <h3>CSV / Excel Result Import</h3>
+    <h3>CSV Result Import</h3>
 
     <p>
-      Accepted headers include Application Number,
+      Accepted CSV headers include Application Number,
       Roll Number, Candidate Name, Marks Obtained,
       Maximum Marks, Percentage, Rank, Percentile,
       Status. Additional section/question JSON
@@ -3452,7 +3506,7 @@ async function resultImport(){
       <input
         id="resultFile"
         type="file"
-        accept=".csv,.xlsx,.xls"
+        accept=".csv"
       >
 
     </div>
@@ -4571,7 +4625,6 @@ async function settings(){
         ${field("Portal Name","portalName","text",x.portalName||"")}
         ${field("Short Name","portalShortName","text",x.portalShortName||"")}
         ${field("Application Prefix","applicationPrefix","text",x.applicationPrefix||"EXAM")}
-        ${field("Application Sequence","applicationSequence","number",x.applicationSequence||100001)}
         ${field("Public Notice / Footer","footerText","text",x.footerText||"")}
         <div class="actions">
           <button class="btn primary">Save Portal Basics</button>
@@ -4685,7 +4738,6 @@ function renderSettingsSummary(x){
     ["Portal Name",x.portalName],
     ["Short Name",x.portalShortName],
     ["Application Prefix",x.applicationPrefix],
-    ["Application Sequence",x.applicationSequence],
     ["Application Open",x.applicationOpen!==false?"Enabled":"Disabled"],
     ["Session Timeout",`${x.sessionTimeoutMinutes||30} minutes`],
     ["Admit Card Published",x.admitCardPublished?"Enabled":"Disabled"],
