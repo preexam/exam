@@ -1,13 +1,128 @@
 rules_version = '2';
+
 service firebase.storage {
+
   match /b/{bucket}/o {
-    function signedIn() { return request.auth != null; }
-    function activeAdmin() { return signedIn() && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.active == true; }
-    function owner(appId) { return signedIn() && firestore.get(/databases/(default)/documents/applications/$(appId)).data.authUid == request.auth.uid; }
-    match /applications/{applicationId}/{fileName} {
-      allow read: if activeAdmin() || owner(applicationId);
-      allow write: if activeAdmin() || (owner(applicationId) && request.resource.size < 10 * 1024 * 1024);
-      allow delete: if activeAdmin() || owner(applicationId);
+
+    /* =========================================================
+       BASIC AUTH
+       ========================================================= */
+
+    function signedIn() {
+      return request.auth != null;
     }
+
+
+    /* =========================================================
+       ADMIN HELPERS
+       ========================================================= */
+
+    function adminDoc() {
+      return firestore.get(
+        /databases/(default)/documents/admins/$(request.auth.uid)
+      );
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && firestore.exists(
+          /databases/(default)/documents/admins/$(request.auth.uid)
+        )
+        && adminDoc().data.active == true;
+    }
+
+    function isSuperAdmin() {
+      return isAdmin()
+        && adminDoc().data.role == "superadmin";
+    }
+
+    function hasApplicationPermission() {
+      return isAdmin()
+        && (
+          isSuperAdmin()
+          || adminDoc().data.permissions.all == true
+          || adminDoc().data.permissions.applications == true
+        );
+    }
+
+
+    /* =========================================================
+       APPLICATION OWNER
+       ========================================================= */
+
+    function isApplicationOwner(applicationId) {
+      return signedIn()
+        && firestore.exists(
+          /databases/(default)/documents/applications/$(applicationId)
+        )
+        && firestore.get(
+          /databases/(default)/documents/applications/$(applicationId)
+        ).data.authUid == request.auth.uid;
+    }
+
+
+    /* =========================================================
+       FILE VALIDATION
+       ========================================================= */
+
+    function validFileSize() {
+      return request.resource.size < 10 * 1024 * 1024;
+    }
+
+    function validContentType() {
+      return request.resource.contentType.matches(
+        'image/(jpeg|jpg|png|webp)|application/pdf|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      );
+    }
+
+
+    /* =========================================================
+       APPLICATION FILES
+       ========================================================= */
+
+    match /applications/{applicationId}/{fileName} {
+
+      /*
+       * Candidate can read only files belonging to their
+       * own application.
+       *
+       * Application/admin users with proper permission can
+       * also read application files.
+       */
+      allow read: if isApplicationOwner(applicationId)
+        || hasApplicationPermission();
+
+
+      /*
+       * Candidate can upload to their own application.
+       *
+       * Admin with application permission can also upload/
+       * replace files when required.
+       */
+      allow write: if (
+          isApplicationOwner(applicationId)
+          || hasApplicationPermission()
+        )
+        && validFileSize()
+        && validContentType();
+
+
+      /*
+       * Candidate can delete their own files.
+       * Authorized application admins can also delete files.
+       */
+      allow delete: if isApplicationOwner(applicationId)
+        || hasApplicationPermission();
+    }
+
+
+    /* =========================================================
+       DEFAULT DENY
+       ========================================================= */
+
+    /*
+     * Any storage path not explicitly defined above is denied.
+     */
+
   }
 }
