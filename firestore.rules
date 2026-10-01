@@ -41,7 +41,7 @@ service cloud.firestore {
         && request.resource.data.authUid == resource.data.authUid
         && request.resource.data.applicationNumber == resource.data.applicationNumber
         && request.resource.data.candidateId == resource.data.candidateId
-        && (request.resource.data.status == resource.data.status || (resource.data.status == 'Application Incomplete' && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && request.resource.data.paymentStatus == 'Successful') || (resource.data.status == 'Correction Required' && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && request.resource.data.paymentStatus == 'Successful'))
+        && (request.resource.data.status == resource.data.status || (resource.data.status == 'Application Incomplete' && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && request.resource.data.paymentStatus == 'Successful') || (resource.data.status == 'Correction Required' && correctionOpen(resource.data) && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && request.resource.data.paymentStatus == 'Successful')) && (resource.data.status != 'Correction Required' || correctionOpen(resource.data))
         && request.resource.data.paymentStatus == resource.data.paymentStatus
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
