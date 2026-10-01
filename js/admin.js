@@ -302,6 +302,8 @@ onAuthStateChanged(auth,async user=>{
     me=user;
     adminData=a;
     window.__adminData=a;
+    const portalSettings=await getSettings();
+    startAdminSessionTimeout(portalSettings.sessionTimeoutMinutes);
 
     $("#login").hidden=true;
     $("#app").hidden=false;
