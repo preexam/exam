@@ -64,8 +64,8 @@ service cloud.firestore {
       allow write: if permission('results');
     }
     match /centres/{id} { allow read: if true; allow write: if permission('centres'); }
-    match /customFields/{id} { allow read: if true; allow write: if permission('formBuilder'); }
-    match /documents/{id} { allow read, write: if permission('documents'); }
+    match /customFields/{id} { allow read: if signedIn(); allow write: if permission('formBuilder'); }
+    match /documents/{id} { allow read: if signedIn(); allow write: if permission('documents'); }
     match /notices/{id} { allow read: if true; allow write: if permission('notices'); }
     match /auditLogs/{id} {
       allow read: if permission('audit');
