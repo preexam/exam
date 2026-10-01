@@ -1,4 +1,4 @@
-import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";
+import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";
 
 const $=s=>document.querySelector(s);
 const panel=$("#panel");
@@ -2487,9 +2487,17 @@ async function allocateAdmitDrafts(v,form){
       existing.data().rollNumber
     )continue;
 
+    const counterRef=doc(db,"counters",`admit_${v.examId}`);
+    const rollNumber=await runTransaction(db,async tx=>{
+      const counterSnap=await tx.get(counterRef);
+      const current=Number(counterSnap.exists()?counterSnap.data().nextNumber:(v.rollStart||100001));
+      if(!Number.isFinite(current)||current<0)throw new Error("Invalid roll counter.");
+      tx.set(counterRef,{examId:v.examId,nextNumber:current+1,updatedAt:serverTimestamp()},{merge:true});
+      return current;
+    });
     const roll=
       prefix+
-      String(n++)
+      String(rollNumber)
         .padStart(
           Number(v.rollWidth||6),
           "0"
