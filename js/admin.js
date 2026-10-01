@@ -807,8 +807,8 @@ async function exams(){
       )}
 
       <div class="actions">
-        <button class="btn primary">
-          Save Exam
+        <button type="submit" class="btn primary">
+          Save Exam Settings
         </button>
       </div>
 
@@ -1087,12 +1087,15 @@ async function examConfig(id){
       `
     )}
 
-    <button
-      class="btn primary"
-      id="saveExamConfig"
-    >
-      Save Configuration
-    </button>
+    <div class="actions">
+      <button
+        type="button"
+        class="btn primary"
+        id="saveExamConfig"
+      >
+        Save Exam Settings
+      </button>
+    </div>
 
     <p id="cfgMsg" class="message"></p>
   `;
@@ -1851,10 +1854,11 @@ async function formBuilder(){
       Hidden fields remain stored; they are simply removed from the candidate form.
     </p>
 
-    <div class="actions">
-      <button class="btn primary" id="saveStudentForm">Save Student Form Settings</button>
-      <button class="btn" id="resetStudentForm">Reset Built-in Fields</button>
+    <div class="actions settings-actions">
+      <button type="button" class="btn primary" id="saveStudentForm">Save Student Form Settings</button>
+      <button type="button" class="btn" id="resetStudentForm">Reset Built-in Fields</button>
     </div>
+    <p class="muted settings-save-hint">Save after changing any student field or section visibility setting.</p>
 
     <p id="formSettingsMsg" class="message"></p>
     <div class="card" style="margin:14px 0">
@@ -2111,9 +2115,11 @@ async function documents(){
         ]
       )}
 
-      <button class="btn primary">
-        Save Document
-      </button>
+      <div class="actions">
+        <button type="submit" class="btn primary">
+          Save Document Settings
+        </button>
+      </div>
 
     </form>
 
@@ -2374,12 +2380,12 @@ async function centres(){
           )}
 
           <div class="actions">
-            <button type="button" class="btn" id="saveRollSettings">
+            <button type="button" class="btn primary" id="saveRollSettings">
               Save Roll Settings
             </button>
-            <button class="btn primary">
-            Allocate & Generate Admit Drafts
-          </button>
+            <button type="submit" class="btn primary">
+              Allocate & Generate Admit Drafts
+            </button>
           </div>
 
           <p
@@ -4089,9 +4095,11 @@ async function notices(){
         true
       )}
 
-      <button class="btn primary">
-        Save Notice
-      </button>
+      <div class="actions">
+        <button type="submit" class="btn primary">
+          Save Notice Settings
+        </button>
+      </div>
 
     </form>
 
@@ -4535,9 +4543,11 @@ async function admins(){
         .join("")
       }
 
-      <button class="btn primary">
-        Save Admin
-      </button>
+      <div class="actions">
+        <button type="submit" class="btn primary">
+          Save Admin Settings
+        </button>
+      </div>
 
     </form>
 
@@ -4748,7 +4758,7 @@ async function settings(){
 
   panel.innerHTML=`
     <h2>Portal Settings & Security</h2>
-    <p class="muted">Each section saves independently. The saved configuration is shown below.</p>
+    <p class="muted">Each section has its own Save Settings button. Changes are not applied until you save the relevant section.</p>
 
     <div class="settings-section">
       <h3>Portal Basics</h3>
