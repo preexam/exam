@@ -1383,8 +1383,7 @@ function exportApps(){
         `"${String(v??"").replace(/"/g,'""')}"`
       ).join(",")
     )
-    .join("
-"),
+    .join("\n"),
 
     "text/csv"
   );
@@ -1475,8 +1474,7 @@ async function payments(){
           `"${String(v??"").replace(/"/g,'""')}"`
         ).join(",")
       )
-      .join("
-"),
+      .join("\n"),
 
       "text/csv"
     );
@@ -2656,8 +2654,7 @@ async function admit(){
           `"${String(v??"").replace(/"/g,'""')}"`
         ).join(",")
       )
-      .join("
-"),
+      .join("\n"),
 
       "text/csv"
     );
@@ -4282,8 +4279,7 @@ async function exportCollection(
         `"${String(v??"").replace(/"/g,'""')}"`
       ).join(",")
     )
-    .join("
-"),
+    .join("\n"),
 
     "text/csv"
   );
