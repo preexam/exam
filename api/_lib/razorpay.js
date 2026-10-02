@@ -88,11 +88,12 @@ function examEndMs(exam) {
 async function resolveExamForApplication(app) {
   const storedExamId = String(app?.examId || "default");
   const tryIds = [];
-  if (storedExamId !== "default") tryIds.push(storedExamId);
 
+  // Admin active exam is the source of truth for the live application fee.
   const settingsSnap = await db.doc("settings/portal").get();
   const activeExamId = settingsSnap.exists ? String(settingsSnap.data().activeExamId || "") : "";
-  if (activeExamId && activeExamId !== "default" && !tryIds.includes(activeExamId)) tryIds.push(activeExamId);
+  if (activeExamId && activeExamId !== "default") tryIds.push(activeExamId);
+  if (storedExamId !== "default" && !tryIds.includes(storedExamId)) tryIds.push(storedExamId);
 
   for (const id of tryIds) {
     const snap = await db.doc("exams/" + id).get();
