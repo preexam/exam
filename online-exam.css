@@ -86,3 +86,12 @@ body:has(#examApp){
   .question-card h2{font-size:20px}
   .score{font-size:40px}
 }
+
+
+/* BOOKESH exam experience */
+body:has(#examApp){background:radial-gradient(circle at 85% -5%,rgba(255,122,0,.10),transparent 27%),#f5f8fc}
+.option:has(input:checked){border-color:#ffb36b;background:#fff6ed;box-shadow:0 8px 22px rgba(255,122,0,.10)}
+.option input{accent-color:#ff7a00}
+.palette button.current{background:#ff7a00;border-color:#ff7a00;outline-color:rgba(255,122,0,.13)}
+.progress i{background:linear-gradient(90deg,#ff7a00,#ff9b32)}
+.score{color:#1557a6}
