@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { admin, db } = require("./firebase-admin");
+const { admin, db, auth } = require("./firebase-admin");
 
 function requiredEnv(name) {
   const value = process.env[name];
@@ -103,6 +103,7 @@ async function markPaymentSuccessful({ applicationNumber, orderId, paymentId, am
 
 module.exports = {
   admin,
+  auth,
   db,
   requiredEnv,
   razorpayRequest,
