@@ -24,6 +24,7 @@ describe("Firestore production security rules",function(){
       await setDoc(doc(db,"onlineAnswerKeys","ONLINE","items","q1"),{correct:"A",marks:1});
       await setDoc(doc(db,"onlineAttempts","ONLINE_APP100"),{applicationNumber:"APP100",authUid:"candidate-1",examId:"ONLINE",status:"In Progress",answers:{},startedAt:new Date(),expiresAt:new Date(Date.now()+1800000)});
       await setDoc(doc(db,"onlineAttempts","ONLINE_APP100","questions","q1"),{question:"2+2?",options:["4","5","6","7"],marks:1,order:1});
+      await setDoc(doc(db,"onlineAttempts","EXPIRED_APP100"),{applicationNumber:"APP100",authUid:"candidate-1",examId:"EXPIRED",status:"In Progress",answers:{},startedAt:new Date(Date.now()-3600000),expiresAt:new Date(Date.now()-10000)});
     });
   });
   after(async()=>{if(env)await env.cleanup()});
@@ -100,16 +101,7 @@ describe("Firestore production security rules",function(){
   });
   it("blocks late candidate submission after the exam expiry grace window",async()=>{
     const c1=env.authenticatedContext("candidate-1").firestore();
-    await setDoc(doc(c1,"onlineAttempts","ONLINE_APP100"),{
-      status:"In Progress",
-      authUid:"candidate-1",
-      examId:"ONLINE",
-      applicationNumber:"APP100",
-      answers:{},
-      startedAt:new Date(Date.now()-3600000),
-      expiresAt:new Date(Date.now()-10000)
-    });
-    await assertFails(updateDoc(doc(c1,"onlineAttempts","ONLINE_APP100"),{
+    await assertFails(updateDoc(doc(c1,"onlineAttempts","EXPIRED_APP100"),{
       status:"Submitted",
       submittedAt:new Date(),
       autoSubmitted:false,
