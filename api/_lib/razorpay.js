@@ -54,7 +54,7 @@ const allowedCorsOrigins = new Set([
 ]);
 
 function corsHeadersFor(request) {
-  const origin = request?.headers?.get("origin") || "";
+  const origin = request?.headers?.get ? request.headers.get("origin") : (request?.headers?.origin || "");
   const headers = { ...corsHeaders, Vary: "Origin" };
   if (allowedCorsOrigins.has(origin)) headers["Access-Control-Allow-Origin"] = origin;
   return headers;
