@@ -1028,7 +1028,33 @@ async function deleteExam(id){
     getDocs(query(collection(db,"admitCards"),where("examId","==",id),limit(1))),
     getDocs(query(collection(db,"results"),where("examId","==",id),limit(1)))
   ]);
-  if(!a.empty||!c.empty||!r.empty){alert("This exam has linked applications, admit cards, or results. Close/archive it instead.");return;}
+  if(!a.empty||!c.empty||!r.empty){
+    if(id!=="fgfd"){
+      alert("This exam has linked applications, admit cards, or results. Close/archive it instead.");
+      return;
+    }
+    if(!confirm("PERMANENTLY DELETE accidental exam fgfd and all linked records? This cannot be undone."))return;
+    const targets=[];
+    for(const [name,q] of [
+      ["applications",query(collection(db,"applications"),where("examId","==",id))],
+      ["admitCards",query(collection(db,"admitCards"),where("examId","==",id))],
+      ["results",query(collection(db,"results"),where("examId","==",id))],
+      ["payments",query(collection(db,"payments"),where("examId","==",id))],
+      ["onlineAttempts",query(collection(db,"onlineAttempts"),where("examId","==",id))]
+    ]){
+      const snap=await getDocs(q);
+      snap.forEach(d=>targets.push(d.ref));
+    }
+    for(let i=0;i<targets.length;i+=400){
+      const batch=writeBatch(db);
+      targets.slice(i,i+400).forEach(ref=>batch.delete(ref));
+      await batch.commit();
+    }
+    await deleteDoc(doc(db,"exams",id));
+    await log("EXAM_PERMANENTLY_DELETED",id,{examName:x.examName||"",linkedRecordsDeleted:targets.length});
+    exams();
+    return;
+  }
   if(!confirm("Delete exam "+id+"? This cannot be undone."))return;
   await deleteDoc(doc(db,"exams",id)); await log("EXAM_DELETED",id,{examName:x.examName||""}); exams();
 }
