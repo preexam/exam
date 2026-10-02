@@ -7,8 +7,8 @@ function qualificationSubjectField(value){
   const track=educationQualification.tracks[qualificationTrackKey(value)];
   if(educationQualification.enabled===false||!track||track.enabled===false||!track.subjects.length)return "";
   const current=String(a.education?.teachingSubject||"");
-  const options=track.subjects.map(subject=>\`<option value="${escapeHtml(subject)}" ${String(subject)===current?"selected":""}>${escapeHtml(subject)}</option>\`).join("");
-  return \`<label>Teaching Subject / Subject Preference<select name="teachingSubject" required ${locked?"disabled":""}><option value="">Select Subject</option>${options}</select></label>\`;
+  const options=track.subjects.map(subject=>`<option value="${escapeHtml(subject)}" ${String(subject)===current?"selected":""}>${escapeHtml(subject)}</option>`).join("");
+  return `<label>Teaching Subject / Subject Preference<select name="teachingSubject" required ${locked?"disabled":""}><option value="">Select Subject</option>${options}</select></label>`;
 }
 const paymentRequired=exam?.paymentRequired!==false;
 const paymentFee=Number(exam?.fee||0);
