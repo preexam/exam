@@ -1,4 +1,4 @@
-import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";
+import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser,defaultEducationQualification} from "./firebase.js";
 
 const $=s=>document.querySelector(s);
 const panel=$("#panel");
@@ -1046,7 +1046,9 @@ async function deleteExam(id){
       snap.forEach(d=>targets.push(d.ref));
     }
     for(let i=0;i<targets.length;i+=400){
-      const batch=writeBatch(db);
+      const educationQualification={enabled:!!document.querySelector('[name="educationQualificationEnabled"]')?.checked,tracks:{"1to5":{enabled:!!document.querySelector('[name="educationQualification_1to5_enabled"]')?.checked,label:"1 to 5",subjects:String(document.querySelector('[name="educationQualification_1to5_subjects"]')?.value||"").split(",").map(x=>x.trim()).filter(Boolean)},"6to8":{enabled:!!document.querySelector('[name="educationQualification_6to8_enabled"]')?.checked,label:"6 to 8",subjects:String(document.querySelector('[name="educationQualification_6to8_subjects"]')?.value||"").split(",").map(x=>x.trim()).filter(Boolean)}}};
+  if(educationQualification.enabled&&Object.values(educationQualification.tracks).some(t=>t.enabled&&t.subjects.length===0)){showMsg($("#formSettingsMsg"),"Add at least one subject for every enabled qualification level.",true);return;}
+  const batch=writeBatch(db);
       targets.slice(i,i+400).forEach(ref=>batch.delete(ref));
       await batch.commit();
     }
@@ -1946,6 +1948,8 @@ async function formBuilder(){
     declaration:settingsData.formSections?.declaration!==false
   };
 
+  const educationQualification={...defaultEducationQualification,...(settingsData.educationQualification||{}),tracks:{...defaultEducationQualification.tracks,...Object.fromEntries(Object.entries(settingsData.educationQualification?.tracks||{}).map(([key,value])=>[key,{...defaultEducationQualification.tracks[key],...(value||{}),subjects:Array.isArray(value?.subjects)?value.subjects.filter(Boolean).map(String):defaultEducationQualification.tracks[key]?.subjects||[]}]))}};
+
   panel.innerHTML=`
     <h2>Application Form Builder</h2>
     <p class="muted">
@@ -1971,6 +1975,17 @@ async function formBuilder(){
         ${check("Photo & Signature","section_photo",window.__formSections.photo)}
         ${check("Documents","section_documents",window.__formSections.documents)}
         ${check("Declaration","section_declaration",window.__formSections.declaration)}
+      </div>
+    </div>
+    <div class="card" style="margin:14px 0">
+      <h3>Education Qualification Subject Rules</h3>
+      <p class="muted">Enable qualification-wise subject selection and configure subjects for each level.</p>
+      ${check("Enable qualification-wise subject selection","educationQualificationEnabled",educationQualification.enabled!==false)}
+      <div class="form-grid">
+        ${check("Enable 1 to 5 subject selection","educationQualification_1to5_enabled",educationQualification.tracks["1to5"]?.enabled!==false)}
+        ${field("1 to 5 Subjects (comma separated)","educationQualification_1to5_subjects","text",(educationQualification.tracks["1to5"]?.subjects||[]).join(", "))}
+        ${check("Enable 6 to 8 subject selection","educationQualification_6to8_enabled",educationQualification.tracks["6to8"]?.enabled!==false)}
+        ${field("6 to 8 Subjects (comma separated)","educationQualification_6to8_subjects","text",(educationQualification.tracks["6to8"]?.subjects||[]).join(", "))}
       </div>
     </div>
     <div id="fieldTable"></div>
@@ -2054,6 +2069,7 @@ async function saveStudentFormSettings(){
     {
       formFieldEnabled:enabled,
       formSections,
+      educationQualification,
       updatedAt:serverTimestamp()
     },
     {merge:true}
