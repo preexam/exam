@@ -1,7 +1,7 @@
 import {auth,db,storage,doc,getDoc,updateDoc,serverTimestamp,signOut,escapeHtml,showMsg,ref,uploadBytes,getDownloadURL,onAuthStateChanged,getDocs,collection,getSettings,getActiveExam,examLifecycle} from "./firebase.js";
 import {functions} from "./firebase-config.js";
 import {httpsCallable} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-functions.js";
-const $=s=>document.querySelector(s); const appNo=sessionStorage.getItem("candidateApp"),root=document.querySelector("#dash");if(!appNo){location.href="application.html";throw new Error("No application")};const user=await new Promise(resolve=>{const off=onAuthStateChanged(auth,u=>{off();resolve(u)})});if(!user){sessionStorage.clear();location.href="application.html";throw new Error("Not authenticated")};const snap=await getDoc(doc(db,"applications",appNo));if(!snap.exists()||snap.data().authUid!==user.uid){root.innerHTML='<div class="card">Application not found or access denied.</div>';throw 0}const a=snap.data(); const settings=await getSettings(); const formFieldEnabled=settings.formFieldEnabled||{}; const formSections={personal:settings.formSections?.personal!==false,address:settings.formSections?.address!==false,education:settings.formSections?.education!==false,category:settings.formSections?.category!==false,photo:settings.formSections?.photo!==false,documents:settings.formSections?.documents!==false,declaration:settings.formSections?.declaration!==false}; const enabledField=key=>formFieldEnabled[key]!==false; const sectionMeta=[["personal","Personal Details"],["address","Address Details"],["education","Education & Educational Qualification"],["category","Category / Other Details"],["documents","Documents"],["declaration","Declaration"]]; const enabledSections=sectionMeta.filter(([key])=>formSections[key]); const examSnap=await getDoc(doc(db,"exams",a.examId||settings.activeExamId||"default")); const exam=examSnap.exists()?{id:examSnap.id,...examSnap.data()}:null; const life=examLifecycle(exam); const locked=a.status==="Final Submitted"; const correctionMode=a.status==="Correction Required"&&life.correctionOpen; const customSnap=await getDocs(collection(db,"customFields")); const customFields=customSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.visible!==false).sort((x,y)=>(x.order||100)-(y.order||100)); const docSnap=await getDocs(collection(db,"documents")); const documentRules=docSnap.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(x.order||0)-(y.order||0)); if(settings.maintenanceMode){root.innerHTML=`<div class="card"><h1>Portal Under Maintenance</h1><p>Please try again later.</p></div>`;throw 0}
+const $=s=>document.querySelector(s); const appNo=sessionStorage.getItem("candidateApp"),root=document.querySelector("#dash");if(!appNo){location.replace("application.html");throw new Error("No application")};const user=await new Promise(resolve=>{const off=onAuthStateChanged(auth,u=>{off();resolve(u)})});if(!user){sessionStorage.clear();location.href="application.html";throw new Error("Not authenticated")};const snap=await getDoc(doc(db,"applications",appNo));if(!snap.exists()||snap.data().authUid!==user.uid){root.innerHTML='<div class="card">Application not found or access denied.</div>';throw 0}const a=snap.data(); const settings=await getSettings(); const formFieldEnabled=settings.formFieldEnabled||{}; const formSections={personal:settings.formSections?.personal!==false,address:settings.formSections?.address!==false,education:settings.formSections?.education!==false,category:settings.formSections?.category!==false,photo:settings.formSections?.photo!==false,documents:settings.formSections?.documents!==false,declaration:settings.formSections?.declaration!==false}; const enabledField=key=>formFieldEnabled[key]!==false; const sectionMeta=[["personal","Personal Details"],["address","Address Details"],["education","Education & Educational Qualification"],["category","Category / Other Details"],["documents","Documents"],["declaration","Declaration"]]; const enabledSections=sectionMeta.filter(([key])=>formSections[key]); const examSnap=await getDoc(doc(db,"exams",a.examId||settings.activeExamId||"default")); const exam=examSnap.exists()?{id:examSnap.id,...examSnap.data()}:null; const life=examLifecycle(exam); const locked=a.status==="Final Submitted"; const correctionMode=a.status==="Correction Required"&&life.correctionOpen; const customSnap=await getDocs(collection(db,"customFields")); const customFields=customSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.visible!==false).sort((x,y)=>(x.order||100)-(y.order||100)); const docSnap=await getDocs(collection(db,"documents")); const documentRules=docSnap.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(x.order||0)-(y.order||0)); if(settings.maintenanceMode){root.innerHTML=`<div class="card"><h1>Portal Under Maintenance</h1><p>Please try again later.</p></div>`;throw 0}
 const v=(obj,key)=>escapeHtml(obj?.[key]||"");
 const paymentRequired=exam?.paymentRequired!==false;
 const paymentFee=Number(exam?.fee||0);
@@ -171,33 +171,5 @@ stepLinks().forEach(link=>{
     window.scrollTo({top:0,behavior:"smooth"});
   };
 });
-window.scrollTo({top:0,behavior:"smooth"})}};
-    footer.querySelector("[data-step-next]").onclick=async()=>{
-      if(!validateCurrentStep(activeKey))return;
-      const btn=footer.querySelector("[data-step-next]");
-      btn.disabled=true;
-      try{
-        await save(false,true);
-        if(currentStep<stepKeys.length-1){
-          currentStep++;
-          while(currentStep<stepKeys.length-1&&!formSections[stepKeys[currentStep]])currentStep++;
-          renderStep();
-          window.scrollTo({top:0,behavior:"smooth"});
-        }else{
-          document.querySelector("#declare")?.focus();
-          showMsg($("#msg"),"Review the declaration carefully, then use Final Submit.");
-        }
-      }catch(e){
-        showMsg($("#msg"),e.message||"Unable to save this step. Please try again.",true);
-      }finally{btn.disabled=false}
-    };
-  }
-  const isDeclaration=activeKey==="declaration";
-  document.querySelector("#appForm>.actions").style.display=isDeclaration?"flex":"none";
-}
-document.querySelector("#appForm").onsubmit=e=>{e.preventDefault();save(false)};
-document.querySelector("#finalSubmit").onclick=()=>save(true);
-document.querySelector("#print").onclick=()=>window.print();
-document.querySelector("#logout").onclick=async()=>{await signOut(auth);sessionStorage.clear();location.href="application.html"};
-stepLinks().forEach(link=>{link.onclick=e=>{e.preventDefault();const key=link.dataset.sectionLink;const target=stepKeys.indexOf(key);if(target<0||!formSections[key])return;currentStep=target;renderStep();window.scrollTo({top:0,behavior:"smooth"})}});
+window.scrollTo({top:0,behavior:"smooth"});
 renderStep();
