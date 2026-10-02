@@ -38,7 +38,7 @@ export default async function handler(request) {
     }
 
     const payment = await razorpayRequest("/payments/" + encodeURIComponent(paymentId), { method: "GET" });
-    const examSnap = await db.doc("exams/" + (app.examId || "default")).get();
+    const examSnap = await db.doc("exams/" + examId).get();
     const expectedAmount = Math.round(Number(examSnap.exists ? examSnap.data().fee : 0) * 100);
 
     if (payment.order_id !== orderId || payment.status !== "captured" || Number(payment.amount) !== expectedAmount) {
