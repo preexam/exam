@@ -43,10 +43,22 @@ function webhookSignature(rawBody) {
 }
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://preexam.github.io",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
   "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
+
+const allowedCorsOrigins = new Set([
+  "https://preexam.github.io",
+  "https://bookesh.co",
+  "https://www.bookesh.co"
+]);
+
+function corsHeadersFor(request) {
+  const origin = request?.headers?.get("origin") || "";
+  const headers = { ...corsHeaders, Vary: "Origin" };
+  if (allowedCorsOrigins.has(origin)) headers["Access-Control-Allow-Origin"] = origin;
+  return headers;
+}
 
 function paymentWindowOpen(exam) {
   const end = exam?.paymentEndMs != null
@@ -118,5 +130,6 @@ module.exports = {
   webhookSignature,
   paymentWindowOpen,
   markPaymentSuccessful,
-  corsHeaders
+  corsHeaders,
+  corsHeadersFor
 };
