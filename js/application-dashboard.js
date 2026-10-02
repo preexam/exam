@@ -173,31 +173,3 @@ stepLinks().forEach(link=>{
 });
 window.scrollTo({top:0,behavior:"smooth"});
 renderStep();
-      if(!validateCurrentStep(activeKey))return;
-      const btn=footer.querySelector("[data-step-next]");
-      btn.disabled=true;
-      try{
-        await save(false,true);
-        if(currentStep<stepKeys.length-1){
-          currentStep++;
-          while(currentStep<stepKeys.length-1&&!formSections[stepKeys[currentStep]])currentStep++;
-          renderStep();
-          window.scrollTo({top:0,behavior:"smooth"});
-        }else{
-          document.querySelector("#declare")?.focus();
-          showMsg($("#msg"),"Review the declaration carefully, then use Final Submit.");
-        }
-      }catch(e){
-        showMsg($("#msg"),e.message||"Unable to save this step. Please try again.",true);
-      }finally{btn.disabled=false}
-    };
-  }
-  const isDeclaration=activeKey==="declaration";
-  document.querySelector("#appForm>.actions").style.display=isDeclaration?"flex":"none";
-}
-document.querySelector("#appForm").onsubmit=e=>{e.preventDefault();save(false)};
-document.querySelector("#finalSubmit").onclick=()=>save(true);
-document.querySelector("#print").onclick=()=>window.print();
-document.querySelector("#logout").onclick=async()=>{await signOut(auth);sessionStorage.clear();location.href="application.html"};
-stepLinks().forEach(link=>{link.onclick=e=>{e.preventDefault();const key=link.dataset.sectionLink;const target=stepKeys.indexOf(key);if(target<0||!formSections[key])return;currentStep=target;renderStep();window.scrollTo({top:0,behavior:"smooth"})}});
-renderStep();
