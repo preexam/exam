@@ -4879,6 +4879,7 @@ async function settings(){
         ${field("Portal Name","portalName","text",x.portalName||"")}
         ${field("Short Name","portalShortName","text",x.portalShortName||"")}
         ${field("Application Prefix","applicationPrefix","text",x.applicationPrefix||"EXAM")}
+        ${field("Active Exam Code","activeExamId","text",x.activeExamId||"default",'placeholder="e.g. jtet001"')}}
         ${field("Public Notice / Footer","footerText","text",x.footerText||"")}
         <div class="actions">
           <button class="btn primary">Save Portal Basics</button>
@@ -4934,6 +4935,16 @@ async function settings(){
 
   const savePart=async(form,fields,msgId)=>{
     const v=formObj(form);
+    if(fields.includes("activeExamId")){
+      v.activeExamId=String(v.activeExamId||"default").trim();
+      if(v.activeExamId && v.activeExamId!=="default"){
+        const examSnap=await getDoc(doc(db,"exams",v.activeExamId));
+        if(!examSnap.exists()){
+          showMsg(document.querySelector("#"+msgId),"Active Exam Code not found: "+v.activeExamId,true);
+          return;
+        }
+      }
+    }
     for(const n of fields){
       if(["applicationOpen","admitCardPublished","resultPublished","maintenanceMode","adminMfaRequired"].includes(n)){
         v[n]=bool(form,n);
@@ -4956,7 +4967,7 @@ async function settings(){
 
   $("#settingsBasics").onsubmit=e=>{
     e.preventDefault();
-    savePart(e.target,["portalName","portalShortName","applicationPrefix","applicationSequence","footerText"],"settingsBasicsMsg");
+    savePart(e.target,["portalName","portalShortName","applicationPrefix","applicationSequence","activeExamId","footerText"],"settingsBasicsMsg");
   };
 
   $("#settingsApplication").onsubmit=e=>{
@@ -4992,6 +5003,7 @@ function renderSettingsSummary(x){
     ["Portal Name",x.portalName],
     ["Short Name",x.portalShortName],
     ["Application Prefix",x.applicationPrefix],
+    ["Active Exam Code",x.activeExamId||"default"],
     ["Application Open",x.applicationOpen!==false?"Enabled":"Disabled"],
     ["Session Timeout",`${x.sessionTimeoutMinutes||30} minutes`],
     ["Admit Card Published",x.admitCardPublished?"Enabled":"Disabled"],
