@@ -18,9 +18,10 @@ async function loadRazorpayCheckout(){
     document.head.appendChild(s);
   });
 }
+const PAYMENT_API_BASE_URL="https://exam-henna-two.vercel.app";
 async function paymentApi(path,payload){
   const token=await user.getIdToken();
-  const response=await fetch(path,{
+  const response=await fetch(PAYMENT_API_BASE_URL+path,{
     method:"POST",
     headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
     body:JSON.stringify(payload)
