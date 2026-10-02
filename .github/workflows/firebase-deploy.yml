@@ -33,7 +33,12 @@ jobs:
         run: |
           set -euo pipefail
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-          gcloud storage buckets update gs://exam-9f830.firebasestorage.app --cors-file=storage.cors.json
+
+          bucket="$(gcloud storage buckets list --project=exam-9f830 --format='value(name)' | head -n 1)"
+          test -n "$bucket" || { echo "::error::No Cloud Storage bucket found for Firebase project exam-9f830."; exit 1; }
+
+          echo "Configuring Storage CORS on gs://$bucket"
+          gcloud storage buckets update "gs://$bucket" --cors-file=storage.cors.json
 
       - name: Deploy Firebase resources
         run: firebase deploy --project exam-9f830 --only hosting,firestore,storage --non-interactive
