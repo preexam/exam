@@ -22,11 +22,18 @@ export default async function handler(request) {
     }
 
     const app = appSnap.data();
+    const storedExamId = app.examId || "default";
+    let examId = storedExamId;
+    if (storedExamId === "default") {
+      const settingsSnap = await db.doc("settings/portal").get();
+      const activeExamId = settingsSnap.exists ? settingsSnap.data().activeExamId : null;
+      if (activeExamId && activeExamId !== "default") examId = String(activeExamId);
+    }
     if (app.paymentStatus === "Successful") {
       return Response.json({ error: "Payment is already successful." }, { status: 409 });
     }
 
-    const examSnap = await db.doc("exams/" + (app.examId || "default")).get();
+    const examSnap = await db.doc("exams/" + examId).get();
     if (!examSnap.exists) return Response.json({ error: "Exam configuration not found." }, { status: 412 });
     const exam = examSnap.data();
 
@@ -44,7 +51,7 @@ export default async function handler(request) {
         amount: amountPaise,
         currency: "INR",
         receipt: applicationNumber,
-        notes: { applicationNumber, examId: app.examId || "default" }
+        notes: { applicationNumber, examId }
       })
     });
 

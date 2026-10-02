@@ -27,6 +27,13 @@ export default async function handler(request) {
     }
 
     const app = appSnap.data();
+    const storedExamId = app.examId || "default";
+    let examId = storedExamId;
+    if (storedExamId === "default") {
+      const settingsSnap = await db.doc("settings/portal").get();
+      const activeExamId = settingsSnap.exists ? settingsSnap.data().activeExamId : null;
+      if (activeExamId && activeExamId !== "default") examId = String(activeExamId);
+    }
     if (app.paymentOrderId !== orderId) {
       return Response.json({ error: "This payment order is not linked to the application." }, { status: 412 });
     }
@@ -38,7 +45,7 @@ export default async function handler(request) {
     }
 
     const payment = await razorpayRequest("/payments/" + encodeURIComponent(paymentId), { method: "GET" });
-    const examSnap = await db.doc("exams/" + (app.examId || "default")).get();
+    const examSnap = await db.doc("exams/" + examId).get();
     const expectedAmount = Math.round(Number(examSnap.exists ? examSnap.data().fee : 0) * 100);
 
     if (payment.order_id !== orderId || payment.status !== "captured" || Number(payment.amount) !== expectedAmount) {
