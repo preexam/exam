@@ -20,7 +20,8 @@ $("#registerForm").onsubmit=async e=>{
   if(!dob){showMsg(regMsg,"Date of birth is required.",true);return}
   const dobDate=new Date(dob+"T00:00:00"),today=new Date();today.setHours(0,0,0,0);
   if(Number.isNaN(dobDate.getTime())||dobDate>today){showMsg(regMsg,"Date of birth cannot be in the future.",true);return}
-  if(password.length<6){showMsg(regMsg,"Password must be at least 6 characters.",true);return}\n  if(password!==confirmPassword){showMsg(regMsg,"Password and Confirm Password do not match.",true);return}
+  if(password.length<6){showMsg(regMsg,"Password must be at least 6 characters.",true);return}
+  if(password!==confirmPassword){showMsg(regMsg,"Password and Confirm Password do not match.",true);return}
   try{
     const applicationNumber=appNo(settings.applicationPrefix),email=`${applicationNumber.toLowerCase()}@candidate.examportal.local`;
     const created=await createUserWithEmailAndPassword(auth,email,password);
