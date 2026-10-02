@@ -26,5 +26,18 @@ jobs:
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
 
+      - name: Configure Razorpay secrets
+        env:
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+          for name in RAZORPAY_KEY_ID RAZORPAY_KEY_SECRET RAZORPAY_WEBHOOK_SECRET; do
+            value="${!name}"
+            test -n "$value" || { echo "::error::GitHub Actions secret $name is missing."; exit 1; }
+            printf '%s' "$value" | firebase functions:secrets:set "$name" --project exam-9f830 --force
+          done
+
       - name: Deploy Hosting, Firestore, Storage and Functions
         run: firebase deploy --project exam-9f830 --non-interactive
