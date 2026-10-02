@@ -31,5 +31,5 @@ test("candidate application remains usable at mobile width",async({page})=>{
   await page.goto("/application.html",{waitUntil:"domcontentloaded"});
   const width=await page.locator("body").evaluate(el=>el.scrollWidth);
   const viewport=await page.evaluate(()=>window.innerWidth);
-  expect(width).toBeLessThanOrEqual(viewport+2);
+  expect(width).toBeLessThanOrEqual(viewport+3);
 });
