@@ -16,9 +16,23 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/applications/$(appId))
         && get(/databases/$(database)/documents/applications/$(appId)).data.authUid == request.auth.uid;
     }
+    function activeExamId() {
+      return exists(/databases/$(database)/documents/settings/portal)
+        ? get(/databases/$(database)/documents/settings/portal).data.get('activeExamId', 'default')
+        : 'default';
+    }
     function ownerCreate() {
-      return signedIn() && request.resource.data.authUid == request.auth.uid
-        && request.resource.data.candidateId == request.auth.uid;
+      return signedIn()
+        && request.resource.data.keys().hasOnly([
+          'applicationNumber','authUid','candidateId','personal','status',
+          'paymentStatus','examId','createdAt','updatedAt'
+        ])
+        && request.resource.data.applicationNumber == request.path.segments[request.path.segments.size() - 1]
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.candidateId == request.auth.uid
+        && request.resource.data.status == 'Application Incomplete'
+        && request.resource.data.paymentStatus == 'Pending'
+        && request.resource.data.examId == activeExamId();
     }
     function correctionOpen(app) {
       return signedIn()
