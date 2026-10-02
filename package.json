@@ -13,5 +13,8 @@
     "firebase-tools": "^14.0.0",
     "mocha": "^11.7.2",
     "firebase": "^12.1.0"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0"
   }
 }
