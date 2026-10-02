@@ -4961,7 +4961,6 @@ async function settings(){
       <h3>Security & Maintenance</h3>
       <form id="settingsSecurity" class="form-grid">
         ${check("Maintenance Mode","maintenanceMode",!!x.maintenanceMode)}
-        ${check("Require OTP / MFA for admins","adminMfaRequired",!!x.adminMfaRequired)}
         <div class="actions">
           <button class="btn primary">Save Security Settings</button>
         </div>
@@ -4991,7 +4990,7 @@ async function settings(){
       }
     }
     for(const n of fields){
-      if(["applicationOpen","admitCardPublished","resultPublished","maintenanceMode","adminMfaRequired"].includes(n)){
+      if(["applicationOpen","admitCardPublished","resultPublished","maintenanceMode"].includes(n)){
         v[n]=bool(form,n);
       }
     }
@@ -5027,7 +5026,7 @@ async function settings(){
 
   $("#settingsSecurity").onsubmit=e=>{
     e.preventDefault();
-    savePart(e.target,["maintenanceMode","adminMfaRequired"],"settingsSecurityMsg");
+    savePart(e.target,["maintenanceMode"],"settingsSecurityMsg");
   };
 
   $("#backupMeta").onclick=()=>{
@@ -5054,7 +5053,6 @@ function renderSettingsSummary(x){
     ["Admit Card Published",x.admitCardPublished?"Enabled":"Disabled"],
     ["Result Published",x.resultPublished?"Enabled":"Disabled"],
     ["Maintenance Mode",x.maintenanceMode?"Enabled":"Disabled"],
-    ["Admin MFA",x.adminMfaRequired?"Enabled":"Disabled"],
     ["Enabled Student Fields",Object.entries(x.formFieldEnabled||{}).filter(([,v])=>v!==false).map(([k])=>k).join(", ")||"All built-in fields by default"]
   ];
 
