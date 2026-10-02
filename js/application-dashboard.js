@@ -105,6 +105,7 @@ function validateCurrentStep(key){
     if(!validateData(x))return false;
   }
   if(key==="category"){
+    const form=document.querySelector("#appForm");
     const fd=new FormData(form);
     const x=Object.fromEntries(fd.entries());
     for(const cf of customFields.filter(f=>f.type==="Multi-select")){
