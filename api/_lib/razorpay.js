@@ -64,7 +64,7 @@ async function markPaymentSuccessful({ applicationNumber, orderId, paymentId, am
     if (app.paymentStatus === "Successful") return;
     if (app.paymentOrderId !== orderId) throw new Error("Payment order does not match the application.");
 
-    const examSnap = await tx.get(db.doc("exams/" + (app.examId || "default")));
+    let examId = app.examId || "default"; if(examId === "default"){const settingsSnap = await tx.get(db.doc("settings/portal")); const activeExamId = settingsSnap.exists ? settingsSnap.data().activeExamId : null; if(activeExamId && activeExamId !== "default") examId = String(activeExamId);} const examSnap = await tx.get(db.doc("exams/" + examId));
     const exam = examSnap.exists ? examSnap.data() : {};
     const expected = Math.round(Number(exam.fee || 0) * 100);
     if (expected <= 0 || Number(amountPaise) !== expected) {
