@@ -162,7 +162,7 @@ function renderStep(){
   document.querySelector("#appForm>.actions").style.display=isPayment?"flex":"none";
   const finalButton=document.querySelector("#finalSubmit");
   if(finalButton)finalButton.style.display=isPayment?"inline-flex":"none";
-  const saveButton=document.querySelector("#appForm>.actions button[type="submit"]");
+  const saveButton=document.querySelector('#appForm>.actions button[type="submit"]');
   if(saveButton)saveButton.style.display="none";
 }
 document.querySelector("#appForm").onsubmit=e=>{e.preventDefault();save(false)};
