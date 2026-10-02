@@ -27,5 +27,11 @@ jobs:
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
 
+      - name: Configure Firebase Storage CORS
+        run: |
+          set -euo pipefail
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+          gcloud storage buckets update gs://exam-9f830.firebasestorage.app --cors-file=storage.cors.json
+
       - name: Deploy Firebase resources
         run: firebase deploy --project exam-9f830 --only hosting,firestore,storage --non-interactive
