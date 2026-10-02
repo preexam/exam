@@ -69,9 +69,70 @@ function paymentWindowOpen(exam) {
   return end == null || (!Number.isNaN(end) && Date.now() <= end);
 }
 
-async function markPaymentSuccessful({ applicationNumber, orderId, paymentId, amountPaise, signature = null, source }) {
+function timestampMs(value) {
+  if (!value) return NaN;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? Number(value) : parsed;
+}
+
+function examStartMs(exam) {
+  return Number(exam.applicationStartMs) || timestampMs(exam.applicationStart);
+}
+
+function examEndMs(exam) {
+  return Number(exam.applicationEndMs) || timestampMs(exam.applicationEnd);
+}
+
+async function resolveExamForApplication(app) {
+  const storedExamId = String(app?.examId || "default");
+  const tryIds = [];
+  if (storedExamId !== "default") tryIds.push(storedExamId);
+
+  const settingsSnap = await db.doc("settings/portal").get();
+  const activeExamId = settingsSnap.exists ? String(settingsSnap.data().activeExamId || "") : "";
+  if (activeExamId && activeExamId !== "default" && !tryIds.includes(activeExamId)) tryIds.push(activeExamId);
+
+  for (const id of tryIds) {
+    const snap = await db.doc("exams/" + id).get();
+    if (snap.exists) return { id: snap.id, ...snap.data() };
+  }
+
+  const examsSnap = await db.collection("exams").get();
+  const createdAtMs = timestampMs(app?.createdAt);
+  const candidates = examsSnap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(exam => exam.status !== "Closed" && exam.status !== "Archived")
+    .filter(exam => {
+      const start = examStartMs(exam);
+      const end = examEndMs(exam);
+      return Number.isNaN(createdAtMs) || ((!start || createdAtMs >= start) && (!end || createdAtMs <= end));
+    })
+    .sort((a, b) => (examStartMs(b) || 0) - (examStartMs(a) || 0));
+
+  if (candidates.length) return candidates[0];
+
+  const fallback = examsSnap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(exam => exam.status !== "Closed" && exam.status !== "Archived")
+    .sort((a, b) => (examStartMs(b) || 0) - (examStartMs(a) || 0));
+
+  return fallback[0] || null;
+}
+
+async function markPaymentSuccessful({ applicationNumber, orderId, paymentId, amountPaise, signature = null, source, examId = null }) {
   const appRef = db.doc("applications/" + applicationNumber);
   const paymentRef = db.doc("payments/" + orderId);
+
+  let resolvedExamId = examId ? String(examId) : "";
+  if (!resolvedExamId) {
+    const currentApp = await appRef.get();
+    if (!currentApp.exists) throw new Error("Application not found.");
+    const resolvedExam = await resolveExamForApplication(currentApp.data());
+    if (!resolvedExam) throw new Error("Exam configuration not found.");
+    resolvedExamId = resolvedExam.id;
+  }
 
   await db.runTransaction(async tx => {
     const appSnap = await tx.get(appRef);
@@ -82,8 +143,9 @@ async function markPaymentSuccessful({ applicationNumber, orderId, paymentId, am
     if (app.paymentStatus === "Successful") return;
     if (app.paymentOrderId !== orderId) throw new Error("Payment order does not match the application.");
 
-    let examId = app.examId || "default"; if(examId === "default"){const settingsSnap = await tx.get(db.doc("settings/portal")); const activeExamId = settingsSnap.exists ? settingsSnap.data().activeExamId : null; if(activeExamId && activeExamId !== "default") examId = String(activeExamId);} const examSnap = await tx.get(db.doc("exams/" + examId));
-    const exam = examSnap.exists ? examSnap.data() : {};
+    const examSnap = await tx.get(db.doc("exams/" + resolvedExamId));
+    if (!examSnap.exists) throw new Error("Exam configuration not found.");
+    const exam = examSnap.data();
     const expected = Math.round(Number(exam.fee || 0) * 100);
     if (expected <= 0 || Number(amountPaise) !== expected) {
       throw new Error("Payment amount does not match the configured application fee.");
@@ -129,6 +191,7 @@ module.exports = {
   checkoutSignature,
   webhookSignature,
   paymentWindowOpen,
+  resolveExamForApplication,
   markPaymentSuccessful,
   corsHeaders,
   corsHeadersFor
