@@ -40,7 +40,8 @@ export default async function handler(request) {
           orderId,
           paymentId: entity.id,
           amountPaise: Number(entity.amount || 0),
-          source: "webhook"
+          source: "webhook",
+          examId: payment.examId || null
         });
       }
     } else if (orderId && event.event === "payment.failed") {
