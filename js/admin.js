@@ -1910,6 +1910,9 @@ const BUILTIN_FIELDS=[
   ["photo","Photograph","File Upload","photo"],
   ["signature","Signature","File Upload","photo"],
   ["thumb","Left-hand Thumb Impression","File Upload","photo"],
+  ["certificateFile","Reservation Certificate","File Upload","documents"],
+  ["nocFile","NOC Document","File Upload","documents"],
+  ["otherFile","Other Document","File Upload","documents"],
   ["visibleMark","Identification / Visible Mark","Text","other"]
 ];
 
