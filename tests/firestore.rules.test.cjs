@@ -98,6 +98,25 @@ describe("Firestore production security rules",function(){
       applicationNumber:"APP100",authUid:"candidate-1",examId:"ONLINE",status:"Starting",answers:{}
     }));
   });
+  it("blocks late candidate submission after the exam expiry grace window",async()=>{
+    const c1=env.authenticatedContext("candidate-1").firestore();
+    await setDoc(doc(c1,"onlineAttempts","ONLINE_APP100"),{
+      status:"In Progress",
+      authUid:"candidate-1",
+      examId:"ONLINE",
+      applicationNumber:"APP100",
+      answers:{},
+      startedAt:new Date(Date.now()-3600000),
+      expiresAt:new Date(Date.now()-10000)
+    });
+    await assertFails(updateDoc(doc(c1,"onlineAttempts","ONLINE_APP100"),{
+      status:"Submitted",
+      submittedAt:new Date(),
+      autoSubmitted:false,
+      currentIndex:0,
+      updatedAt:new Date()
+    }));
+  });
   it("prevents candidate from changing protected attempt fields",async()=>{
     const c1=env.authenticatedContext("candidate-1").firestore();
     await assertFails(updateDoc(doc(c1,"onlineAttempts","ONLINE_APP100"),{score:999,graded:true}));
