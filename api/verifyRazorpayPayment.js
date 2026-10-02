@@ -1,4 +1,4 @@
-const { auth, db, requiredEnv, razorpayRequest, safeEqualHex, checkoutSignature, markPaymentSuccessful, corsHeadersFor } = require("./_lib/razorpay");
+const { auth, db, requiredEnv, razorpayRequest, safeEqualHex, checkoutSignature, resolveExamForApplication, markPaymentSuccessful, corsHeadersFor } = require("./_lib/razorpay");
 
 async function getUser(req, body = {}) {
   const header = req.headers?.authorization || "";
@@ -41,16 +41,11 @@ module.exports = async function handler(req, res) {
     }
 
     const app = appSnap.data();
-    const storedExamId = app.examId || "default";
-    let examId = storedExamId;
-    if (storedExamId === "default") {
-      const settingsSnap = await db.doc("settings/portal").get();
-      const activeExamId = settingsSnap.exists ? settingsSnap.data().activeExamId : null;
-      if (activeExamId && activeExamId !== "default") examId = String(activeExamId);
-    }
-
     if (app.paymentOrderId !== orderId) return json(res, { error: "This payment order is not linked to the application." }, 412, req);
     if (app.paymentStatus === "Successful") return json(res, { success: true, status: "Successful" }, 200, req);
+
+    const exam = await resolveExamForApplication(app);
+    if (!exam) return json(res, { error: "Exam configuration not found." }, 412, req);
 
     const expectedSignature = checkoutSignature(orderId, paymentId);
     if (!safeEqualHex(expectedSignature, signature)) {
@@ -58,16 +53,20 @@ module.exports = async function handler(req, res) {
     }
 
     const payment = await razorpayRequest("/payments/" + encodeURIComponent(paymentId), { method: "GET" });
-    const examSnap = await db.doc("exams/" + examId).get();
-    const expectedAmount = Math.round(Number(examSnap.exists ? examSnap.data().fee : 0) * 100);
+    const expectedAmount = Math.round(Number(exam.fee || 0) * 100);
 
     if (payment.order_id !== orderId || payment.status !== "captured" || Number(payment.amount) !== expectedAmount) {
       return json(res, { error: "Payment is not captured or the amount does not match." }, 412, req);
     }
 
     await markPaymentSuccessful({
-      applicationNumber, orderId, paymentId,
-      amountPaise: Number(payment.amount), signature, source: "checkout"
+      applicationNumber,
+      orderId,
+      paymentId,
+      amountPaise: Number(payment.amount),
+      signature,
+      source: "checkout",
+      examId: exam.id
     });
 
     return json(res, { success: true, status: "Successful", paymentId }, 200, req);
