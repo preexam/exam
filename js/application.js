@@ -20,6 +20,7 @@ function setOtpState(verified=false){
   sendOtp.disabled=verified;
   sendOtp.textContent=verified?"Mobile Verified":"Verify Mobile";
   otpInput.disabled=verified;
+  regMobile.disabled=verified;
 }
 async function ensureRecaptcha(){
   if(recaptchaVerifier)return recaptchaVerifier;
@@ -31,7 +32,7 @@ sendOtp.onclick=async()=>{
   if(otpSending||otpVerified)return;
   const phone=phoneNumber();
   if(!phone){showMsg(regMsg,"Enter a valid 10-digit mobile number first.",true);regMobile.focus();return}
-  otpSending=true;sendOtp.disabled=true;showMsg(regMsg,"Sending verification code...");
+  otpSending=true;sendOtp.disabled=true;regMobile.disabled=true;showMsg(regMsg,"Sending verification code...");
   try{
     const appVerifier=await ensureRecaptcha();
     confirmationResult=await signInWithPhoneNumber(auth,phone,appVerifier);
@@ -41,6 +42,7 @@ sendOtp.onclick=async()=>{
     otpInput.focus();
   }catch(err){
     confirmationResult=null;
+    regMobile.disabled=false;
     try{recaptchaVerifier?.clear()}catch{}
     recaptchaVerifier=null;
     showMsg(regMsg,err?.message||"Could not send verification code. Please try again.",true);
