@@ -14,13 +14,14 @@ $("#registerForm").onsubmit=async e=>{
   if(settings.maintenanceMode||settings.applicationOpen===false||life.applicationOpen===false){
     showMsg(regMsg,settings.maintenanceMode?"Portal is under maintenance.":"Applications are currently closed or outside the application window.",true);return;
   }
-  const name=$("#regName").value.trim(),dob=$("#regDob").value,mobile=regMobile.value.trim(),password=$("#regPassword").value;
+  const name=$("#regName").value.trim(),dob=$("#regDob").value,mobile=regMobile.value.trim(),password=$("#regPassword").value,confirmPassword=$("#regPasswordConfirm").value;
   if(name.length<2){showMsg(regMsg,"Enter a valid full name.",true);return}
   if(!/^\d{10}$/.test(mobile)){showMsg(regMsg,"Mobile number must be exactly 10 digits.",true);return}
   if(!dob){showMsg(regMsg,"Date of birth is required.",true);return}
   const dobDate=new Date(dob+"T00:00:00"),today=new Date();today.setHours(0,0,0,0);
   if(Number.isNaN(dobDate.getTime())||dobDate>today){showMsg(regMsg,"Date of birth cannot be in the future.",true);return}
   if(password.length<6){showMsg(regMsg,"Password must be at least 6 characters.",true);return}
+  if(password!==confirmPassword){showMsg(regMsg,"Password and Confirm Password do not match.",true);return}
   try{
     const applicationNumber=appNo(settings.applicationPrefix),email=`${applicationNumber.toLowerCase()}@candidate.examportal.local`;
     const created=await createUserWithEmailAndPassword(auth,email,password);
