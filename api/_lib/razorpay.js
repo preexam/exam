@@ -125,6 +125,15 @@ async function markPaymentSuccessful({ applicationNumber, orderId, paymentId, am
   const appRef = db.doc("applications/" + applicationNumber);
   const paymentRef = db.doc("payments/" + orderId);
 
+  let resolvedExamId = examId ? String(examId) : "";
+  if (!resolvedExamId) {
+    const currentApp = await appRef.get();
+    if (!currentApp.exists) throw new Error("Application not found.");
+    const resolvedExam = await resolveExamForApplication(currentApp.data());
+    if (!resolvedExam) throw new Error("Exam configuration not found.");
+    resolvedExamId = resolvedExam.id;
+  }
+
   await db.runTransaction(async tx => {
     const appSnap = await tx.get(appRef);
     const paymentSnap = await tx.get(paymentRef);
@@ -134,8 +143,7 @@ async function markPaymentSuccessful({ applicationNumber, orderId, paymentId, am
     if (app.paymentStatus === "Successful") return;
     if (app.paymentOrderId !== orderId) throw new Error("Payment order does not match the application.");
 
-    const resolvedId = String(examId || app.examId || "default");
-    let examSnap = await tx.get(db.doc("exams/" + resolvedId));
+    const examSnap = await tx.get(db.doc("exams/" + resolvedExamId));
     if (!examSnap.exists) throw new Error("Exam configuration not found.");
     const exam = examSnap.data();
     const expected = Math.round(Number(exam.fee || 0) * 100);
