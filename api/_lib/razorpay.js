@@ -89,16 +89,22 @@ async function resolveExamForApplication(app) {
   const storedExamId = String(app?.examId || "default");
   const tryIds = [];
 
-  // Admin active exam is the source of truth for the live application fee.
-  const settingsSnap = await db.doc("settings/portal").get();
-  const activeExamId = settingsSnap.exists ? String(settingsSnap.data().activeExamId || "") : "";
-  if (activeExamId && activeExamId !== "default") tryIds.push(activeExamId);
-  if (storedExamId !== "default" && !tryIds.includes(storedExamId)) tryIds.push(storedExamId);
+  // An existing application's exam assignment is immutable for payment purposes.
+  // Only legacy applications without an examId use the current active exam.
+  if (storedExamId !== "default") {
+    tryIds.push(storedExamId);
+  } else {
+    const settingsSnap = await db.doc("settings/portal").get();
+    const activeExamId = settingsSnap.exists ? String(settingsSnap.data().activeExamId || "") : "";
+    if (activeExamId && activeExamId !== "default") tryIds.push(activeExamId);
+  }
 
   for (const id of tryIds) {
     const snap = await db.doc("exams/" + id).get();
     if (snap.exists) return { id: snap.id, ...snap.data() };
   }
+
+  if (storedExamId !== "default") return null;
 
   const examsSnap = await db.collection("exams").get();
   const createdAtMs = timestampMs(app?.createdAt);
