@@ -996,6 +996,7 @@ async function listExams(){
               >
                 Open Config
               </button>
+              <button class="btn small danger" data-delete-exam="${esc(x.id)}">Delete</button>
 
             </td>
 
@@ -1015,8 +1016,22 @@ async function listExams(){
     .forEach(b=>
       b.onclick=()=>examConfig(b.dataset.configExam)
     );
+  $("#examList").querySelectorAll("[data-delete-exam]").forEach(b=>b.onclick=()=>deleteExam(b.dataset.deleteExam));
 }
 
+
+async function deleteExam(id){
+  const x=examCache.find(a=>a.id===id); if(!x)return;
+  if(id===(window.__portalSettings?.activeExamId||"")){alert("This is the active exam. Change the Active Exam Code before deleting it.");return;}
+  const [a,c,r]=await Promise.all([
+    getDocs(query(collection(db,"applications"),where("examId","==",id),limit(1))),
+    getDocs(query(collection(db,"admitCards"),where("examId","==",id),limit(1))),
+    getDocs(query(collection(db,"results"),where("examId","==",id),limit(1)))
+  ]);
+  if(!a.empty||!c.empty||!r.empty){alert("This exam has linked applications, admit cards, or results. Close/archive it instead.");return;}
+  if(!confirm("Delete exam "+id+"? This cannot be undone."))return;
+  await deleteDoc(doc(db,"exams",id)); await log("EXAM_DELETED",id,{examName:x.examName||""}); exams();
+}
 
 async function editExam(id){
 
@@ -2539,6 +2554,7 @@ async function centres(){
             >
               Toggle
             </button>
+            <button class="btn small danger" data-delete-centre="${esc(x.id)}">Delete</button>
 
           </td>
 
@@ -2566,6 +2582,8 @@ async function centres(){
         centres();
       }
     );
+
+  $("#centreTable").querySelectorAll("[data-delete-centre]").forEach(b=>b.onclick=()=>deleteCentre(b.dataset.deleteCentre));
 
   $("#saveRollSettings").onclick=async()=>{
     const v=formObj($("#allocForm"));
@@ -2596,6 +2614,13 @@ async function centres(){
   };
 }
 
+
+async function deleteCentre(id){
+  const s=await getDocs(query(collection(db,"admitCards"),where("centreId","==",id),limit(1)));
+  if(!s.empty){alert("This centre has linked admit cards. Mark it inactive instead.");return;}
+  if(!confirm("Delete centre "+id+"? This cannot be undone."))return;
+  await deleteDoc(doc(db,"centres",id)); await log("CENTRE_DELETED",id); centres();
+}
 
 async function allocateAdmitDrafts(v,form){
 
@@ -2939,6 +2964,7 @@ function renderAdmit(){
             >
               ${x.published?"Unpublish":"Publish"}
             </button>
+            <button class="btn small danger" data-delete-admit="${esc(x.id)}">Delete</button>
 
           </td>
 
@@ -2961,8 +2987,16 @@ function renderAdmit(){
         b.dataset.publishAdmit
       )
     );
+  $("#admitTable").querySelectorAll("[data-delete-admit]").forEach(b=>b.onclick=()=>deleteAdmit(b.dataset.deleteAdmit));
 }
 
+
+async function deleteAdmit(id){
+  const s=await getDoc(doc(db,"admitCards",id)); if(!s.exists()){alert("Admit card not found.");return}
+  if(s.data().published){alert("Published admit cards cannot be deleted. Unpublish first.");return}
+  if(!confirm("Delete draft admit card "+id+"?"))return;
+  await deleteDoc(doc(db,"admitCards",id)); await log("ADMIT_CARD_DELETED",id); admit();
+}
 
 async function editAdmit(id){
 
@@ -3307,6 +3341,7 @@ async function resultList(){
             >
               ${x.published?"Unpublish":"Publish"}
             </button>
+            <button class="btn small danger" data-delete-result="${esc(x.id)}">Delete</button>
 
           </td>
 
@@ -3329,8 +3364,16 @@ async function resultList(){
         b.dataset.pubResult
       )
     );
+  $("#resultWork").querySelectorAll("[data-delete-result]").forEach(b=>b.onclick=()=>deleteResult(b.dataset.deleteResult));
 }
 
+
+async function deleteResult(id){
+  const s=await getDoc(doc(db,"results",id)); if(!s.exists()){alert("Result not found.");return}
+  if(s.data().published){alert("Published results cannot be deleted. Unpublish first.");return}
+  if(!confirm("Delete draft result "+id+"?"))return;
+  await deleteDoc(doc(db,"results",id)); await log("RESULT_DELETED",id,{revision:s.data().revision||1}); resultList();
+}
 
 async function manualResult(existing=null){
 
@@ -4706,6 +4749,7 @@ async function admins(){
             >
               Toggle Active
             </button>
+            <button class="btn small danger" data-delete-admin="${esc(x.id)}">Delete</button>
 
           </td>
 
@@ -4752,6 +4796,14 @@ async function admins(){
         admins();
       }
     );
+
+  $("#adminTable").querySelectorAll("[data-delete-admin]").forEach(b=>b.onclick=async()=>{
+    const x=window.__admins.find(a=>a.id===b.dataset.deleteAdmin); if(!x)return;
+    if(x.id===me.uid){alert("You cannot delete your own admin profile.");return}
+    if(x.role==="superadmin"){alert("Superadmin profiles cannot be deleted. Disable instead.");return}
+    if(!confirm("Delete admin profile "+(x.name||x.id)+"? This removes portal admin access but not the Firebase Auth account."))return;
+    await deleteDoc(doc(db,"admins",x.id)); await log("ADMIN_PROFILE_DELETED",x.id,{role:x.role||""}); admins();
+  });
 }
 
 
