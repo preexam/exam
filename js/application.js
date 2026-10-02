@@ -9,16 +9,36 @@ document.querySelectorAll("[data-auth-tab]").forEach(tab=>{
 function openAuthTab(name){
   document.querySelector(`[data-auth-tab="${name}"]`)?.click();
 }
-let confirmationResult=null,otpVerified=false,recaptchaVerifier=null,otpSending=false;
+let confirmationResult=null,otpVerified=false,recaptchaVerifier=null,otpSending=false,resendUntil=0,resendTimer=null;
 const sendOtp=$("#sendOtp"),otpInput=$("#otp"),regMobile=$("#regMobile"),regMsg=$("#regMsg");
 function phoneNumber(){
   const mobile=regMobile.value.trim();
   return /^\\d{10}$/.test(mobile)?`+91${mobile}`:null;
 }
+function updateResendButton(){
+  if(otpVerified){sendOtp.disabled=true;sendOtp.textContent="Mobile Verified";return}
+  const left=Math.max(0,resendUntil-Date.now());
+  if(left>0){
+    sendOtp.disabled=true;
+    sendOtp.textContent=`Resend OTP (${Math.ceil(left/1000)}s)`;
+  }else{
+    sendOtp.disabled=otpSending;
+    sendOtp.textContent="Verify Mobile";
+  }
+}
+function startResendCooldown(){
+  clearInterval(resendTimer);
+  resendUntil=Date.now()+60000;
+  updateResendButton();
+  resendTimer=setInterval(()=>{
+    updateResendButton();
+    if(Date.now()>=resendUntil){clearInterval(resendTimer);resendTimer=null;updateResendButton()}
+  },1000);
+}
 function setOtpState(verified=false){
   otpVerified=verified;
-  sendOtp.disabled=verified;
-  sendOtp.textContent=verified?"Mobile Verified":"Verify Mobile";
+  if(verified){clearInterval(resendTimer);resendTimer=null;resendUntil=0}
+  updateResendButton();
   otpInput.disabled=verified;
   regMobile.disabled=verified;
 }
@@ -29,7 +49,7 @@ async function ensureRecaptcha(){
   return recaptchaVerifier;
 }
 sendOtp.onclick=async()=>{
-  if(otpSending||otpVerified)return;
+  if(otpSending||otpVerified||Date.now()<resendUntil)return;
   const phone=phoneNumber();
   if(!phone){showMsg(regMsg,"Enter a valid 10-digit mobile number first.",true);regMobile.focus();return}
   otpSending=true;sendOtp.disabled=true;regMobile.disabled=true;showMsg(regMsg,"Sending verification code...");
@@ -38,6 +58,7 @@ sendOtp.onclick=async()=>{
     confirmationResult=await signInWithPhoneNumber(auth,phone,appVerifier);
     otpInput.value="";
     otpInput.disabled=false;
+    startResendCooldown();
     showMsg(regMsg,"Verification code sent to your mobile. Enter the 6-digit code.");
     otpInput.focus();
   }catch(err){
@@ -48,17 +69,28 @@ sendOtp.onclick=async()=>{
     showMsg(regMsg,err?.message||"Could not send verification code. Please try again.",true);
   }finally{
     otpSending=false;
-    if(!otpVerified)sendOtp.disabled=false;
+    updateResendButton();
   }
 };
 otpInput.oninput=async()=>{
-  const code=otpInput.value.replace(/\\D/g,"").slice(0,6);
+  const code=otpInput.value.replace(/\D/g,"").slice(0,6);
   if(otpInput.value!==code)otpInput.value=code;
   if(code.length!==6||!confirmationResult||otpVerified)return;
   otpInput.disabled=true;
   showMsg(regMsg,"Verifying mobile number...");
   try{
     await confirmationResult.confirm(code);
+    const user=auth.currentUser;
+    if(!user)throw new Error("Mobile verification could not be completed. Please try again.");
+    const existing=await getDoc(doc(db,"candidates",user.uid));
+    if(existing.exists()){
+      await signOut(auth);
+      confirmationResult=null;
+      setOtpState(false);
+      otpInput.value="";
+      showMsg(regMsg,"This mobile number is already registered. Please sign in instead.",true);
+      return;
+    }
     otpVerified=true;
     confirmationResult=null;
     setOtpState(true);
