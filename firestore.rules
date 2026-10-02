@@ -21,13 +21,13 @@ service cloud.firestore {
         ? get(/databases/$(database)/documents/settings/portal).data.get('activeExamId', 'default')
         : 'default';
     }
-    function ownerCreate() {
+    function ownerCreate(applicationId) {
       return signedIn()
         && request.resource.data.keys().hasOnly([
           'applicationNumber','authUid','candidateId','personal','status',
           'paymentStatus','examId','createdAt','updatedAt'
         ])
-        && request.resource.data.applicationNumber == request.path.segments[request.path.segments.size() - 1]
+        && request.resource.data.applicationNumber == applicationId
         && request.resource.data.authUid == request.auth.uid
         && request.resource.data.candidateId == request.auth.uid
         && request.resource.data.status == 'Application Incomplete'
@@ -64,7 +64,7 @@ service cloud.firestore {
       allow delete: if permission('applications');
     }
     match /applications/{id} {
-      allow create: if ownerCreate();
+      allow create: if ownerCreate(id);
       allow read: if permission('applications') || owner(id);
       allow update: if permission('applications') || (
         owner(id)
