@@ -23,8 +23,8 @@ async function paymentApi(path,payload){
   const token=await user.getIdToken();
   const response=await fetch(PAYMENT_API_BASE_URL+path,{
     method:"POST",
-    headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
-    body:JSON.stringify(payload)
+    headers:{"Content-Type":"text/plain;charset=UTF-8"},
+    body:JSON.stringify({...payload,idToken:token})
   });
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data?.error||"Payment service request failed.");
