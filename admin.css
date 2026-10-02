@@ -126,7 +126,17 @@
   box-shadow:0 2px 5px rgba(16,24,40,.04);
 }
 .admin-page .btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(16,24,40,.09)}
-.admin-page .btn.primary{border:0}
+.admin-page .btn.primary{
+  border:1px solid transparent;
+  color:#fff;
+  background:linear-gradient(135deg,#4f46e5,#7c3aed);
+  box-shadow:0 10px 24px rgba(79,70,229,.25);
+}
+.admin-page .btn.primary:hover{
+  color:#fff;
+  background:linear-gradient(135deg,#4338ca,#6d28d9);
+  box-shadow:0 13px 30px rgba(79,70,229,.32);
+}
 .admin-page .btn.danger{background:#fff;color:#b42318;border-color:#fecdca}
 .admin-page .grid-4{gap:15px;margin:0 0 22px}
 .admin-page .stat{
