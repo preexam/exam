@@ -1,6 +1,4 @@
 import {auth,db,storage,doc,getDoc,updateDoc,serverTimestamp,signOut,escapeHtml,showMsg,ref,uploadBytes,getDownloadURL,onAuthStateChanged,getDocs,collection,getSettings,getActiveExam,examLifecycle} from "./firebase.js";
-import {functions} from "./firebase-config.js";
-import {httpsCallable} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-functions.js";
 const $=s=>document.querySelector(s); const appNo=sessionStorage.getItem("candidateApp"),root=document.querySelector("#dash");if(!appNo){location.replace("application.html");throw new Error("No application")};const user=await new Promise(resolve=>{const off=onAuthStateChanged(auth,u=>{off();resolve(u)})});if(!user){sessionStorage.clear();location.href="application.html";throw new Error("Not authenticated")};const snap=await getDoc(doc(db,"applications",appNo));if(!snap.exists()||snap.data().authUid!==user.uid){root.innerHTML='<div class="card">Application not found or access denied.</div>';throw 0}const a=snap.data(); const settings=await getSettings(); const formFieldEnabled=settings.formFieldEnabled||{}; const formSections={personal:settings.formSections?.personal!==false,address:settings.formSections?.address!==false,education:settings.formSections?.education!==false,category:settings.formSections?.category!==false,photo:settings.formSections?.photo!==false,documents:settings.formSections?.documents!==false,declaration:settings.formSections?.declaration!==false,payment:true}; const enabledField=key=>formFieldEnabled[key]!==false; const sectionMeta=[["personal","Personal Details"],["address","Address Details"],["education","Education & Educational Qualification"],["category","Category / Other Details"],["documents","Documents"],["declaration","Declaration"],["payment","Payment"]]; const enabledSections=sectionMeta.filter(([key])=>formSections[key]); const examSnap=await getDoc(doc(db,"exams",a.examId||settings.activeExamId||"default")); const exam=examSnap.exists()?{id:examSnap.id,...examSnap.data()}:null; const life=examLifecycle(exam); const locked=a.status==="Final Submitted"; const correctionMode=a.status==="Correction Required"&&life.correctionOpen; const customSnap=await getDocs(collection(db,"customFields")); const customFields=customSnap.docs.map(d=>({id:d.id,...d.data()})).filter(x=>x.visible!==false).sort((x,y)=>(x.order||100)-(y.order||100)); const docSnap=await getDocs(collection(db,"documents")); const documentRules=docSnap.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(x.order||0)-(y.order||0)); if(settings.maintenanceMode){root.innerHTML=`<div class="card"><h1>Portal Under Maintenance</h1><p>Please try again later.</p></div>`;throw 0}
 const v=(obj,key)=>escapeHtml(obj?.[key]||"");
 const paymentRequired=exam?.paymentRequired!==false;
@@ -20,14 +18,23 @@ async function loadRazorpayCheckout(){
     document.head.appendChild(s);
   });
 }
+async function paymentApi(path,payload){
+  const token=await user.getIdToken();
+  const response=await fetch(path,{
+    method:"POST",
+    headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
+    body:JSON.stringify(payload)
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data?.error||"Payment service request failed.");
+  return data;
+}
 async function startPayment(){
   const btn=document.querySelector("#payNow"),msg=document.querySelector("#paymentMsg");
   if(!btn||paymentFee<=0)return;
   btn.disabled=true;showMsg(msg,"Creating secure payment order...");
   try{
-    const createOrder=httpsCallable(functions,"createRazorpayOrder");
-    const verifyPayment=httpsCallable(functions,"verifyRazorpayPayment");
-    const order=(await createOrder({applicationNumber:appNo})).data;
+    const order=await paymentApi("/api/createRazorpayOrder",{applicationNumber:appNo});
     await loadRazorpayCheckout();
     const rzp=new window.Razorpay({
       key:order.keyId,amount:order.amount,currency:order.currency,
@@ -37,7 +44,7 @@ async function startPayment(){
       handler:async response=>{
         try{
           showMsg(msg,"Verifying payment securely...");
-          await verifyPayment({applicationNumber:appNo,orderId:response.razorpay_order_id,paymentId:response.razorpay_payment_id,signature:response.razorpay_signature});
+          await paymentApi("/api/verifyRazorpayPayment",{applicationNumber:appNo,orderId:response.razorpay_order_id,paymentId:response.razorpay_payment_id,signature:response.razorpay_signature});
           location.reload();
         }catch(e){btn.disabled=false;showMsg(msg,e?.message||"Payment verification failed. Please contact support.",true);}
       },
