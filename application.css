@@ -219,3 +219,16 @@ body:has(.application-form) .section-link.active{background:#edf5ff;color:#0e376
 body:has(.application-form) .section-link.active span{background:#ff7a00}
 body:has(.application-form) .declaration-accept{background:#fff8f0;border-color:#ffd7b0;color:#63330f}
 body:has(.application-form) .step-footer .btn.primary{background:linear-gradient(135deg,#ff7a00,#ff9b32)}
+
+
+/* Mobile overflow guard: keep grid/tab content inside the iPhone viewport. */
+@media(max-width:600px){
+  body:has(#registerForm) .application-entry{width:100%;max-width:100%;min-width:0}
+  body:has(#registerForm) .entry-head,
+  body:has(#registerForm) .auth-panel,
+  body:has(#registerForm) .auth-switch,
+  body:has(#registerForm) .entry-note{min-width:0;max-width:100%}
+  body:has(#registerForm) .auth-switch>*{min-width:0;max-width:100%}
+  body:has(#registerForm) .auth-tab{min-width:0;overflow-wrap:anywhere;word-break:normal}
+  body:has(#registerForm) .form-grid>*{min-width:0}
+}
