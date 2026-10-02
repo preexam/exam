@@ -1,4 +1,4 @@
-import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser} from "./firebase.js";
+import {auth,db,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,writeBatch,runTransaction,signInWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,escapeHtml,showMsg,downloadText,toDate,getSettings,getActiveExam,examLifecycle,isAdminUser,defaultEducationQualification} from "./firebase.js";
 
 const $=s=>document.querySelector(s);
 const panel=$("#panel");
@@ -1917,6 +1917,18 @@ async function formBuilder(){
     declaration:settingsData.formSections?.declaration!==false
   };
 
+  const educationQualification={
+    ...defaultEducationQualification,
+    ...(settingsData.educationQualification||{}),
+    tracks:{
+      ...defaultEducationQualification.tracks,
+      ...Object.fromEntries(Object.entries(settingsData.educationQualification?.tracks||{}).map(([key,value])=>[key,{
+        ...defaultEducationQualification.tracks[key],...(value||{}),
+        subjects:Array.isArray(value?.subjects)?value.subjects.filter(Boolean).map(String):defaultEducationQualification.tracks[key]?.subjects||[]
+      }]))
+    }
+  };
+
   panel.innerHTML=`
     <h2>Application Form Builder</h2>
     <p class="muted">
@@ -1944,6 +1956,18 @@ async function formBuilder(){
         ${check("Declaration","section_declaration",window.__formSections.declaration)}
       </div>
     </div>
+    <div class="card" style="margin:14px 0">
+      <h3>Education Qualification Subject Rules</h3>
+      <p class="muted">When enabled, the candidate gets a subject-choice field based on the selected qualification level. These settings are exam-neutral and can be disabled anytime.</p>
+      ${check("Enable qualification-wise subject selection","educationQualificationEnabled",educationQualification.enabled!==false)}
+      <div class="form-grid">
+        ${check("Enable 1 to 5 subject selection","educationQualification_1to5_enabled",educationQualification.tracks["1to5"]?.enabled!==false)}
+        ${field("1 to 5 Subjects (comma separated)","educationQualification_1to5_subjects","text",(educationQualification.tracks["1to5"]?.subjects||[]).join(", "))}
+        ${check("Enable 6 to 8 subject selection","educationQualification_6to8_enabled",educationQualification.tracks["6to8"]?.enabled!==false)}
+        ${field("6 to 8 Subjects (comma separated)","educationQualification_6to8_subjects","text",(educationQualification.tracks["6to8"]?.subjects||[]).join(", "))}
+      </div>
+    </div>
+
     <div id="fieldTable"></div>
 
     <h3 class="section-title">Add Custom Field</h3>
@@ -2011,6 +2035,25 @@ async function saveStudentFormSettings(){
 
   const sectionKeys=["personal","address","education","category","photo","documents","declaration"];
   const formSections=Object.fromEntries(sectionKeys.map(k=>[k,!!document.querySelector(`[name="section_${k}"]`)?.checked]));
+  const educationQualification={
+    enabled:!!document.querySelector('[name="educationQualificationEnabled"]')?.checked,
+    tracks:{
+      "1to5":{
+        enabled:!!document.querySelector('[name="educationQualification_1to5_enabled"]')?.checked,
+        label:"1 to 5",
+        subjects:String(document.querySelector('[name="educationQualification_1to5_subjects"]')?.value||"").split(",").map(x=>x.trim()).filter(Boolean)
+      },
+      "6to8":{
+        enabled:!!document.querySelector('[name="educationQualification_6to8_enabled"]')?.checked,
+        label:"6 to 8",
+        subjects:String(document.querySelector('[name="educationQualification_6to8_subjects"]')?.value||"").split(",").map(x=>x.trim()).filter(Boolean)
+      }
+    }
+  };
+  if(educationQualification.enabled&&Object.values(educationQualification.tracks).some(t=>t.enabled&&t.subjects.length===0)){
+    showMsg($("#formSettingsMsg"),"Add at least one subject for every enabled qualification level.",true);
+    return;
+  }
   const batch=writeBatch(db);
 
   document.querySelectorAll("[data-custom-field-toggle]").forEach(input=>{
@@ -2025,6 +2068,7 @@ async function saveStudentFormSettings(){
     {
       formFieldEnabled:enabled,
       formSections,
+      educationQualification,
       updatedAt:serverTimestamp()
     },
     {merge:true}
@@ -4879,7 +4923,7 @@ async function settings(){
         ${field("Portal Name","portalName","text",x.portalName||"")}
         ${field("Short Name","portalShortName","text",x.portalShortName||"")}
         ${field("Application Prefix","applicationPrefix","text",x.applicationPrefix||"EXAM")}
-        ${field("Active Exam Code","activeExamId","text",x.activeExamId||"default",'placeholder="e.g. jtet001"')}}
+        ${field("Active Exam Code","activeExamId","text",x.activeExamId||"default",'placeholder="e.g. jtet001"')}
         ${field("Public Notice / Footer","footerText","text",x.footerText||"")}
         <div class="actions">
           <button class="btn primary">Save Portal Basics</button>
