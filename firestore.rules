@@ -104,6 +104,7 @@ service cloud.firestore {
         && request.resource.data.applicationNumber != null
         && exists(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber))
         && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.authUid == request.auth.uid
+        && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.examId == request.resource.data.examId
         && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.status in ['Final Submitted','Approved']
         && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId))
         && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamEnabled == true
