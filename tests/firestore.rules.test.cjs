@@ -115,6 +115,10 @@ describe("Firestore production security rules",function(){
       updatedAt:new Date()
     }));
   });
+  it("prevents candidates from changing document verification state",async()=>{
+    const c1=env.authenticatedContext("candidate-1").firestore();
+    await assertFails(updateDoc(doc(c1,"applications","APP100"),{documentVerification:{photo:"Verified"}}));
+  });
   it("prevents candidate from changing protected attempt fields",async()=>{
     const c1=env.authenticatedContext("candidate-1").firestore();
     await assertFails(updateDoc(doc(c1,"onlineAttempts","ONLINE_APP100"),{score:999,graded:true}));
