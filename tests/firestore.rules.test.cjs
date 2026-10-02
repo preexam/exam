@@ -15,7 +15,8 @@ describe("Firestore production security rules",function(){
     });
     await env.withSecurityRulesDisabled(async ctx=>{
       const db=ctx.firestore();
-      await setDoc(doc(db,"exams","ONLINE"),{examName:"Online Test",onlineExamEnabled:true,onlineExamPublished:true,onlineExamDuration:30,onlineExamMaxAttempts:1});
+      await setDoc(doc(db,"settings","portal"),{activeExamId:"ONLINE"});
+      await setDoc(doc(db,"exams","ONLINE"),{examName:"Online Test",onlineExamEnabled:true,onlineExamPublished:true,onlineExamDuration:30,onlineExamMaxAttempts:1,paymentRequired:true});
       await setDoc(doc(db,"applications","APP100"),{applicationNumber:"APP100",authUid:"candidate-1",candidateId:"candidate-1",status:"Approved",paymentStatus:"Successful",createdAt:new Date()});
       await setDoc(doc(db,"applications","APP200"),{applicationNumber:"APP200",authUid:"candidate-2",candidateId:"candidate-2",status:"Approved",paymentStatus:"Successful",createdAt:new Date()});
       await setDoc(doc(db,"admitCards","APP100"),{authUid:"candidate-1",published:false});
@@ -30,6 +31,53 @@ describe("Firestore production security rules",function(){
     const anon=env.unauthenticatedContext().firestore();
     await assertSucceeds(getDoc(doc(anon,"exams","ONLINE")));
     await assertFails(getDoc(doc(anon,"applications","APP100")));
+  });
+  it("blocks candidate-created payment/status/exam spoofing on application creation",async()=>{
+    const c1=env.authenticatedContext("candidate-1").firestore();
+    await assertFails(setDoc(doc(c1,"applications","FAKEPAY"),{
+      applicationNumber:"FAKEPAY",
+      authUid:"candidate-1",
+      candidateId:"candidate-1",
+      status:"Application Incomplete",
+      paymentStatus:"Successful",
+      examId:"ONLINE",
+      personal:{fullName:"Attacker",dob:"2000-01-01",mobile:"9999999999"},
+      createdAt:new Date(),
+      updatedAt:new Date()
+    }));
+    await assertFails(setDoc(doc(c1,"applications","FAKEEXAM"),{
+      applicationNumber:"FAKEEXAM",
+      authUid:"candidate-1",
+      candidateId:"candidate-1",
+      status:"Application Incomplete",
+      paymentStatus:"Pending",
+      examId:"NOT_ACTIVE",
+      personal:{fullName:"Attacker",dob:"2000-01-01",mobile:"9999999999"},
+      createdAt:new Date(),
+      updatedAt:new Date()
+    }));
+    await assertFails(setDoc(doc(c1,"applications","FAKESTATUS"),{
+      applicationNumber:"FAKESTATUS",
+      authUid:"candidate-1",
+      candidateId:"candidate-1",
+      status:"Final Submitted",
+      paymentStatus:"Pending",
+      examId:"ONLINE",
+      personal:{fullName:"Attacker",dob:"2000-01-01",mobile:"9999999999"},
+      createdAt:new Date(),
+      updatedAt:new Date()
+    }));
+    await assertSucceeds(setDoc(doc(c1,"applications","VALIDAPP"),{
+      applicationNumber:"VALIDAPP",
+      authUid:"candidate-1",
+      candidateId:"candidate-1",
+      status:"Application Incomplete",
+      paymentStatus:"Pending",
+      examId:"ONLINE",
+      personal:{fullName:"Candidate",dob:"2000-01-01",mobile:"9999999999"},
+      createdAt:new Date(),
+      updatedAt:new Date()
+    }));
   });
   it("allows a candidate to read only their own attempt paper",async()=>{
     const c1=env.authenticatedContext("candidate-1").firestore();
