@@ -4827,7 +4827,7 @@ async function settings(){
         ${field("Portal Name","portalName","text",x.portalName||"")}
         ${field("Short Name","portalShortName","text",x.portalShortName||"")}
         ${field("Application Prefix","applicationPrefix","text",x.applicationPrefix||"EXAM")}
-        ${field("Active Exam Code","activeExamId","text",x.activeExamId||"default","placeholder="e.g. jtet001"")}
+        ${field("Active Exam Code","activeExamId","text",x.activeExamId||"default",'placeholder="e.g. jtet001"')}}
         ${field("Public Notice / Footer","footerText","text",x.footerText||"")}
         <div class="actions">
           <button class="btn primary">Save Portal Basics</button>
