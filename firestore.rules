@@ -129,7 +129,8 @@ service cloud.firestore {
           (request.resource.data.status == 'Submitted'
             && request.resource.data.answers == resource.data.answers
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','submittedAt','autoSubmitted','updatedAt','currentIndex'])
-            && request.resource.data.submittedAt != null)
+            && request.resource.data.submittedAt != null
+            && request.time <= resource.data.expiresAt + duration.value(5, 's'))
         )
       );
       allow delete: if permission('results');
