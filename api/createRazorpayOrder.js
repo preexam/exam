@@ -14,12 +14,12 @@ export default async function handler(request) {
     const user = await getUser(request);
     const body = await request.json();
     const applicationNumber = String(body?.applicationNumber || "").trim();
-    if (!applicationNumber) return Response.json({ error: "Application number is required." }, { status: 400, headers: corsHeaders }), { headers: corsHeaders });
+    if (!applicationNumber) return Response.json({ error: "Application number is required." }, { status: 400, headers: corsHeaders }));
 
     const appRef = db.doc("applications/" + applicationNumber);
     const appSnap = await appRef.get();
     if (!appSnap.exists || appSnap.data().authUid !== user.uid) {
-      return Response.json({ error: "Application access denied." }, { status: 403, headers: corsHeaders }), { headers: corsHeaders });
+      return Response.json({ error: "Application access denied." }, { status: 403, headers: corsHeaders }));
     }
 
     const app = appSnap.data();
@@ -31,19 +31,19 @@ export default async function handler(request) {
       if (activeExamId && activeExamId !== "default") examId = String(activeExamId);
     }
     if (app.paymentStatus === "Successful") {
-      return Response.json({ error: "Payment is already successful." }, { status: 409, headers: corsHeaders }), { headers: corsHeaders });
+      return Response.json({ error: "Payment is already successful." }, { status: 409, headers: corsHeaders }));
     }
 
     const examSnap = await db.doc("exams/" + examId).get();
-    if (!examSnap.exists) return Response.json({ error: "Exam configuration not found." }, { status: 412, headers: corsHeaders }), { headers: corsHeaders });
+    if (!examSnap.exists) return Response.json({ error: "Exam configuration not found." }, { status: 412, headers: corsHeaders }));
     const exam = examSnap.data();
 
-    if (exam.paymentRequired === false) return Response.json({ required: false }), { headers: corsHeaders });
-    if (!paymentWindowOpen(exam)) return Response.json({ error: "The payment window has closed." }, { status: 412, headers: corsHeaders }), { headers: corsHeaders });
+    if (exam.paymentRequired === false) return Response.json({ required: false }));
+    if (!paymentWindowOpen(exam)) return Response.json({ error: "The payment window has closed." }, { status: 412, headers: corsHeaders }));
 
     const amountPaise = Math.round(Number(exam.fee || 0) * 100);
     if (!Number.isFinite(amountPaise) || amountPaise <= 0) {
-      return Response.json({ error: "Application fee is not configured." }, { status: 412, headers: corsHeaders }), { headers: corsHeaders });
+      return Response.json({ error: "Application fee is not configured." }, { status: 412, headers: corsHeaders }));
     }
 
     const order = await razorpayRequest("/orders", {
@@ -86,10 +86,10 @@ export default async function handler(request) {
       amount: amountPaise,
       currency: "INR",
       description: "Application Fee - " + applicationNumber
-    }), { headers: corsHeaders });
+    }));
   } catch (error) {
     console.error("createRazorpayOrder", error);
     const message = error?.message || "Unable to create payment order.";
-    return Response.json({ error: message }, { status: message === "Authentication required." ? 401 : 500 }), { headers: corsHeaders });
+    return Response.json({ error: message }, { status: message === "Authentication required." ? 401 : 500 }));
   }
 }
