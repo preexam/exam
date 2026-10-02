@@ -1,4 +1,4 @@
-const { auth, db, admin, requiredEnv, razorpayRequest, paymentWindowOpen, corsHeadersFor } = require("./_lib/razorpay");
+const { auth, db, admin, requiredEnv, razorpayRequest, paymentWindowOpen, resolveExamForApplication, corsHeadersFor } = require("./_lib/razorpay");
 
 async function getUser(req, body = {}) {
   const header = req.headers?.authorization || "";
@@ -15,8 +15,7 @@ function json(res, data, status, req) {
 }
 
 module.exports = async function handler(req, res) {
-  const cors = corsHeadersFor(req);
-  Object.entries(cors).forEach(([key, value]) => res.setHeader(key, value));
+  Object.entries(corsHeadersFor(req)).forEach(([key, value]) => res.setHeader(key, value));
 
   if (req.method === "OPTIONS") {
     res.statusCode = 204;
@@ -37,18 +36,10 @@ module.exports = async function handler(req, res) {
     }
 
     const app = appSnap.data();
-    const storedExamId = app.examId || "default";
-    let examId = storedExamId;
-    if (storedExamId === "default") {
-      const settingsSnap = await db.doc("settings/portal").get();
-      const activeExamId = settingsSnap.exists ? settingsSnap.data().activeExamId : null;
-      if (activeExamId && activeExamId !== "default") examId = String(activeExamId);
-    }
     if (app.paymentStatus === "Successful") return json(res, { error: "Payment is already successful." }, 409, req);
 
-    const examSnap = await db.doc("exams/" + examId).get();
-    if (!examSnap.exists) return json(res, { error: "Exam configuration not found." }, 412, req);
-    const exam = examSnap.data();
+    const exam = await resolveExamForApplication(app);
+    if (!exam) return json(res, { error: "Exam configuration not found." }, 412, req);
 
     if (exam.paymentRequired === false) return json(res, { required: false }, 200, req);
     if (!paymentWindowOpen(exam)) return json(res, { error: "The payment window has closed." }, 412, req);
@@ -60,22 +51,35 @@ module.exports = async function handler(req, res) {
 
     const order = await razorpayRequest("/orders", {
       method: "POST",
-      body: JSON.stringify({ amount: amountPaise, currency: "INR", receipt: applicationNumber, notes: { applicationNumber, examId } })
+      body: JSON.stringify({
+        amount: amountPaise,
+        currency: "INR",
+        receipt: applicationNumber,
+        notes: { applicationNumber, examId: exam.id }
+      })
     });
 
     await db.runTransaction(async tx => {
       const fresh = await tx.get(appRef);
       if (!fresh.exists || fresh.data().authUid !== user.uid) throw new Error("Application changed or access denied.");
       tx.update(appRef, {
+        examId: exam.id,
         paymentOrderId: order.id,
         paymentOrderAmount: amountPaise,
         paymentOrderCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
       tx.set(db.doc("payments/" + order.id), {
-        applicationNumber, authUid: user.uid, gateway: "razorpay", orderId: order.id,
-        amount: Number((amountPaise / 100).toFixed(2)), amountPaise, currency: "INR",
-        status: "Pending", createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        applicationNumber,
+        authUid: user.uid,
+        gateway: "razorpay",
+        orderId: order.id,
+        examId: exam.id,
+        amount: Number((amountPaise / 100).toFixed(2)),
+        amountPaise,
+        currency: "INR",
+        status: "Pending",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
     });
