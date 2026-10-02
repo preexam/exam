@@ -1,9 +1,10 @@
 const { auth, db, admin, requiredEnv, razorpayRequest, paymentWindowOpen, corsHeadersFor } = require("./_lib/razorpay");
 
-async function getUser(request) {
+async function getUser(request, body = null) {
   const header = request.headers.get("authorization") || "";
-  if (!header.startsWith("Bearer ")) throw new Error("Authentication required.");
-  return auth.verifyIdToken(header.slice(7));
+  const token = header.startsWith("Bearer ") ? header.slice(7) : String(body?.idToken || "");
+  if (!token) throw new Error("Authentication required.");
+  return auth.verifyIdToken(token);
 }
 
 function json(data, status = 200, request) {
@@ -15,8 +16,8 @@ export default async function handler(request) {
   if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405, headers: corsHeadersFor(request) });
 
   try {
-    const user = await getUser(request);
     const body = await request.json();
+    const user = await getUser(request, body);
     const applicationNumber = String(body?.applicationNumber || "").trim();
     if (!applicationNumber) return json({ error: "Application number is required." }, 400, request);
 
