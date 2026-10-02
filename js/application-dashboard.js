@@ -150,7 +150,8 @@ function renderStep(){
   stepKeys.forEach(key=>{
     stepSections(key).forEach(section=>section.classList.toggle("step-visible",key===activeKey));
   });
-  document.querySelector('[name="examPost"]')?.addEventListener("change",e=>{const wrap=document.querySelector("#qualificationSubjectWrap");if(wrap)wrap.innerHTML=qualificationSubjectField(e.target.value)});\nstepLinks().forEach(link=>{
+  document.querySelector('[name="examPost"]')?.addEventListener("change",e=>{const wrap=document.querySelector("#qualificationSubjectWrap");if(wrap)wrap.innerHTML=qualificationSubjectField(e.target.value)});
+stepLinks().forEach(link=>{
     const key=link.dataset.sectionLink;
     link.classList.toggle("active",key===activeKey);
     link.setAttribute("aria-current",key===activeKey?"step":"false");
