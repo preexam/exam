@@ -17,7 +17,7 @@ describe("Firestore production security rules",function(){
       const db=ctx.firestore();
       await setDoc(doc(db,"settings","portal"),{activeExamId:"ONLINE"});
       await setDoc(doc(db,"exams","ONLINE"),{examName:"Online Test",onlineExamEnabled:true,onlineExamPublished:true,onlineExamDuration:30,onlineExamMaxAttempts:1,paymentRequired:true});
-      await setDoc(doc(db,"applications","APP100"),{applicationNumber:"APP100",authUid:"candidate-1",candidateId:"candidate-1",status:"Approved",paymentStatus:"Successful",createdAt:new Date()});
+      await setDoc(doc(db,"applications","APP100"),{applicationNumber:"APP100",authUid:"candidate-1",candidateId:"candidate-1",status:"Approved",paymentStatus:"Successful",examId:"ONLINE",createdAt:new Date()});
       await setDoc(doc(db,"applications","APP200"),{applicationNumber:"APP200",authUid:"candidate-2",candidateId:"candidate-2",status:"Approved",paymentStatus:"Successful",createdAt:new Date()});
       await setDoc(doc(db,"admitCards","APP100"),{authUid:"candidate-1",published:false});
       await setDoc(doc(db,"results","APP100"),{authUid:"candidate-1",published:false});
@@ -92,6 +92,12 @@ describe("Firestore production security rules",function(){
     const c1=env.authenticatedContext("candidate-1").firestore();
     await assertFails(getDoc(doc(c1,"admitCards","APP100")));
     await assertFails(getDoc(doc(c1,"results","APP100")));
+  });
+  it("prevents a candidate from starting an online exam for another exam",async()=>{
+    const c1=env.authenticatedContext("candidate-1").firestore();
+    await assertFails(setDoc(doc(c1,"onlineAttempts","OTHER_APP100"),{
+      applicationNumber:"APP100",authUid:"candidate-1",examId:"OTHER",status:"Starting",answers:{}
+    }));
   });
   it("rejects a non-canonical duplicate online attempt id",async()=>{
     const c1=env.authenticatedContext("candidate-1").firestore();
