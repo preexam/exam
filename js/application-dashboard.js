@@ -150,7 +150,6 @@ function renderStep(){
   stepKeys.forEach(key=>{
     stepSections(key).forEach(section=>section.classList.toggle("step-visible",key===activeKey));
   });
-  document.querySelector('[name="examPost"]')?.addEventListener("change",e=>{const wrap=document.querySelector("#qualificationSubjectWrap");if(wrap)wrap.innerHTML=qualificationSubjectField(e.target.value)});
 stepLinks().forEach(link=>{
     const key=link.dataset.sectionLink;
     link.classList.toggle("active",key===activeKey);
@@ -196,6 +195,8 @@ stepLinks().forEach(link=>{
   if(saveButton)saveButton.style.display="none";
 }
 document.querySelector("#appForm").onsubmit=e=>{e.preventDefault();save(false)};
+document.querySelector('[name="examPost"]')?.addEventListener("change",e=>{const wrap=document.querySelector("#qualificationSubjectWrap");if(wrap)wrap.innerHTML=qualificationSubjectField(e.target.value)});
+
 document.querySelector("#finalSubmit").onclick=async()=>{if(enabledStepKeys()[currentStep]!=="payment"){showMsg($("#msg"),"Complete the application steps and payment before final submission.",true);return}await save(true)};
 document.querySelector("#print").onclick=()=>window.print();
 document.querySelector("#logout").onclick=async()=>{await signOut(auth);sessionStorage.clear();location.href="application.html"};
