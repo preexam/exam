@@ -132,6 +132,14 @@ async function onlineQuestions(examId){
   $("#panel").querySelectorAll("[data-del-q]").forEach(b=>b.onclick=async()=>{
     const id=b.dataset.delQ;
     if(!confirm("Delete this question?"))return;
+    const examSnap=await getDoc(doc(db,"exams",examId));
+    const examData=examSnap.exists()?examSnap.data():{};
+    const questionSnap=await getDoc(doc(db,"onlineQuestions",examId,"items",id));
+    if(examData.onlineExamPublished===true && questionSnap.exists() && questionSnap.data().active!==false){
+      const activeSnap=await getDocs(query(collection(db,"onlineQuestions",examId,"items"),where("active","==",true)));
+      const required=Math.max(1,Number(examData.onlineExamTotalQuestions||1));
+      if(activeSnap.size<=required)return showMsg($("#oeMsg"),"Cannot delete an active question while the exam is published; keep enough active questions for the configured paper.",true);
+    }
     await deleteDoc(doc(db,"onlineQuestions",examId,"items",id));
     await deleteDoc(doc(db,"onlineAnswerKeys",examId,"items",id));
     await runTransaction(db,async tx=>{
