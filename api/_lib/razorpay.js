@@ -42,6 +42,12 @@ function webhookSignature(rawBody) {
   return crypto.createHmac("sha256", requiredEnv("RAZORPAY_WEBHOOK_SECRET")).update(rawBody).digest("hex");
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://preexam.github.io",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS"
+};
+
 function paymentWindowOpen(exam) {
   const end = exam?.paymentEndMs != null
     ? Number(exam.paymentEndMs)
@@ -111,5 +117,6 @@ module.exports = {
   checkoutSignature,
   webhookSignature,
   paymentWindowOpen,
-  markPaymentSuccessful
+  markPaymentSuccessful,
+  corsHeaders
 };
