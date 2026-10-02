@@ -206,3 +206,29 @@ body:has(.application-form) .declaration-accept input{margin-top:3px;flex:0 0 au
   body:has(.application-form) .declaration-box{padding:15px}
   body:has(.application-form) .declaration-terms{padding-left:19px}
 }
+
+
+/* BOOKESH brand refinements */
+body:has(#registerForm),body:has(#appForm){background:radial-gradient(circle at 88% 0%,rgba(255,122,0,.10),transparent 25%),radial-gradient(circle at 0 20%,rgba(21,87,166,.12),transparent 28%),#f6f9fd}
+body:has(#appForm) #dash>.card:first-child{background:linear-gradient(135deg,#062653,#0e376d 58%,#1557a6);box-shadow:0 24px 60px rgba(8,38,77,.18)}
+body:has(#appForm) .section-title:before{background:linear-gradient(#ff7a00,#ff9b32)}
+body:has(#appForm) input:focus,body:has(#appForm) select:focus,body:has(#appForm) textarea:focus{border-color:#ff7a00;box-shadow:0 0 0 4px rgba(255,122,0,.10)}
+body:has(#appForm) .actions .btn.primary{background:linear-gradient(135deg,#ff7a00,#ff9b32)}
+.auth-tab.active{color:#0e376d}.step-badge{background:#fff3e8;color:#d95f00}
+body:has(.application-form) .section-link.active{background:#edf5ff;color:#0e376d}
+body:has(.application-form) .section-link.active span{background:#ff7a00}
+body:has(.application-form) .declaration-accept{background:#fff8f0;border-color:#ffd7b0;color:#63330f}
+body:has(.application-form) .step-footer .btn.primary{background:linear-gradient(135deg,#ff7a00,#ff9b32)}
+
+
+/* Mobile overflow guard: keep grid/tab content inside the iPhone viewport. */
+@media(max-width:600px){
+  body:has(#registerForm) .application-entry{width:100%;max-width:100%;min-width:0}
+  body:has(#registerForm) .entry-head,
+  body:has(#registerForm) .auth-panel,
+  body:has(#registerForm) .auth-switch,
+  body:has(#registerForm) .entry-note{min-width:0;max-width:100%}
+  body:has(#registerForm) .auth-switch>*{min-width:0;max-width:100%}
+  body:has(#registerForm) .auth-tab{min-width:0;overflow-wrap:anywhere;word-break:normal}
+  body:has(#registerForm) .form-grid>*{min-width:0}
+}
