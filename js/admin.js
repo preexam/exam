@@ -1910,6 +1910,9 @@ const BUILTIN_FIELDS=[
   ["photo","Photograph","File Upload","photo"],
   ["signature","Signature","File Upload","photo"],
   ["thumb","Left-hand Thumb Impression","File Upload","photo"],
+  ["certificateFile","Reservation Certificate","File Upload","documents"],
+  ["nocFile","NOC Document","File Upload","documents"],
+  ["otherFile","Other Document","File Upload","documents"],
   ["visibleMark","Identification / Visible Mark","Text","other"]
 ];
 
@@ -2066,7 +2069,7 @@ function renderFields(){
 
   const rows=[
     ...BUILTIN_FIELDS.map(x=>{
-      const enabled=window.__formFieldEnabled?.[x[0]]!==false;
+      const enabled=Object.prototype.hasOwnProperty.call(window.__formFieldEnabled||{},x[0])?window.__formFieldEnabled[x[0]]!==false:!["certificateFile","nocFile","otherFile"].includes(x[0]);
       return `
         <tr>
           <td>${esc(x[0])}</td>
