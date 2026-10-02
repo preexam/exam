@@ -127,13 +127,6 @@ async function markPaymentSuccessful({ applicationNumber, orderId, paymentId, am
   const paymentRef = db.doc("payments/" + orderId);
 
   let resolvedExamId = examId ? String(examId) : "";
-  if (!resolvedExamId) {
-    const currentApp = await appRef.get();
-    if (!currentApp.exists) throw new Error("Application not found.");
-    const resolvedExam = await resolveExamForApplication(currentApp.data());
-    if (!resolvedExam) throw new Error("Exam configuration not found.");
-    resolvedExamId = resolvedExam.id;
-  }
 
   await db.runTransaction(async tx => {
     const appSnap = await tx.get(appRef);
@@ -144,12 +137,16 @@ async function markPaymentSuccessful({ applicationNumber, orderId, paymentId, am
     if (app.paymentStatus === "Successful") return;
     if (app.paymentOrderId !== orderId) throw new Error("Payment order does not match the application.");
 
-    const examSnap = await tx.get(db.doc("exams/" + resolvedExamId));
-    if (!examSnap.exists) throw new Error("Exam configuration not found.");
-    const exam = examSnap.data();
-    const expected = Math.round(Number(exam.fee || 0) * 100);
-    if (expected <= 0 || Number(amountPaise) !== expected) {
-      throw new Error("Payment amount does not match the configured application fee.");
+    const paymentData = paymentSnap.exists ? paymentSnap.data() : null;
+    const expected = Number(paymentData?.amountPaise || app.paymentOrderAmount || 0);
+    if (!paymentData || expected <= 0 || Number(amountPaise) !== expected) {
+      throw new Error("Payment amount does not match the stored payment order.");
+    }
+
+    resolvedExamId = resolvedExamId || String(paymentData?.examId || app.examId || "");
+    if (resolvedExamId) {
+      const examSnap = await tx.get(db.doc("exams/" + resolvedExamId));
+      if (!examSnap.exists) throw new Error("Exam configuration not found.");
     }
 
     tx.set(paymentRef, {
