@@ -171,8 +171,8 @@ stepLinks().forEach(link=>{
     window.scrollTo({top:0,behavior:"smooth"});
   };
 });
-window.scrollTo({top:0,behavior:"smooth"})}};
-    footer.querySelector("[data-step-next]").onclick=async()=>{
+window.scrollTo({top:0,behavior:"smooth"});
+renderStep();
       if(!validateCurrentStep(activeKey))return;
       const btn=footer.querySelector("[data-step-next]");
       btn.disabled=true;
