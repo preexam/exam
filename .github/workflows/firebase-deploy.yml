@@ -34,7 +34,15 @@ jobs:
           set -euo pipefail
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
 
-          bucket="$(sed -nE 's/.*storageBucket:[[:space:]]*['"'"']([^'"'"']+)['"'"'].*/\1/p' js/firebase-config.js | head -n 1)"
+          bucket="$(
+            node <<'NODE'
+const fs = require("fs");
+const text = fs.readFileSync("js/firebase-config.js", "utf8");
+const match = text.match(/storageBucket:\s*["']([^"']+)["']/);
+if (!match) process.exit(1);
+process.stdout.write(match[1]);
+NODE
+          )"
           test -n "$bucket" || { echo "::error::Could not determine Firebase Storage bucket from js/firebase-config.js."; exit 1; }
 
           candidates=("$bucket")
