@@ -1,4 +1,4 @@
-const { auth, db, requiredEnv, razorpayRequest, safeEqualHex, checkoutSignature, resolveExamForApplication, markPaymentSuccessful, corsHeadersFor } = require("./_lib/razorpay");
+const { auth, db, requiredEnv, razorpayRequest, safeEqualHex, checkoutSignature, markPaymentSuccessful, corsHeadersFor } = require("./_lib/razorpay");
 
 async function getUser(req, body = {}) {
   const header = req.headers?.authorization || "";
@@ -44,8 +44,8 @@ module.exports = async function handler(req, res) {
     if (app.paymentOrderId !== orderId) return json(res, { error: "This payment order is not linked to the application." }, 412, req);
     if (app.paymentStatus === "Successful") return json(res, { success: true, status: "Successful" }, 200, req);
 
-    const exam = await resolveExamForApplication(app);
-    if (!exam) return json(res, { error: "Exam configuration not found." }, 412, req);
+    const examId = String(app.examId || "");
+    if (!examId) return json(res, { error: "Exam configuration not found." }, 412, req);
 
     const expectedSignature = checkoutSignature(orderId, paymentId);
     if (!safeEqualHex(expectedSignature, signature)) {
@@ -53,10 +53,10 @@ module.exports = async function handler(req, res) {
     }
 
     const payment = await razorpayRequest("/payments/" + encodeURIComponent(paymentId), { method: "GET" });
-    const expectedAmount = Math.round(Number(exam.fee || 0) * 100);
+    const expectedAmount = Number(app.paymentOrderAmount || 0);
 
-    if (payment.order_id !== orderId || payment.status !== "captured" || Number(payment.amount) !== expectedAmount) {
-      return json(res, { error: "Payment is not captured or the amount does not match." }, 412, req);
+    if (payment.order_id !== orderId || payment.status !== "captured" || expectedAmount <= 0 || Number(payment.amount) !== expectedAmount) {
+      return json(res, { error: "Payment is not captured or the amount does not match the stored order." }, 412, req);
     }
 
     await markPaymentSuccessful({
@@ -66,7 +66,7 @@ module.exports = async function handler(req, res) {
       amountPaise: Number(payment.amount),
       signature,
       source: "checkout",
-      examId: exam.id
+      examId
     });
 
     return json(res, { success: true, status: "Successful", paymentId }, 200, req);
