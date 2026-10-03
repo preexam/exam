@@ -1980,12 +1980,12 @@ async function formBuilder(){
     <div class="card" style="margin:14px 0">
       <h3>Education Qualification Subject Rules</h3>
       <p class="muted">Enable qualification-wise subject selection and configure subjects for each level.</p>
-      ${check("Enable qualification-wise subject selection","educationQualificationEnabled",educationQualification.enabled!==false)}
+      ${check("Enable qualification-wise subject selection","educationQualificationEnabled",window.__educationQualification.enabled!==false)}
       <div class="form-grid">
-        ${check("Enable 1 to 5 subject selection","educationQualification_1to5_enabled",educationQualification.tracks["1to5"]?.enabled!==false)}
-        ${field("1 to 5 Subjects (comma separated)","educationQualification_1to5_subjects","text",(educationQualification.tracks["1to5"]?.subjects||[]).join(", "))}
-        ${check("Enable 6 to 8 subject selection","educationQualification_6to8_enabled",educationQualification.tracks["6to8"]?.enabled!==false)}
-        ${field("6 to 8 Subjects (comma separated)","educationQualification_6to8_subjects","text",(educationQualification.tracks["6to8"]?.subjects||[]).join(", "))}
+        ${check("Enable 1 to 5 subject selection","educationQualification_1to5_enabled",window.__educationQualification.tracks["1to5"]?.enabled!==false)}
+        ${field("1 to 5 Subjects (comma separated)","educationQualification_1to5_subjects","text",(window.__educationQualification.tracks["1to5"]?.subjects||[]).join(", "))}
+        ${check("Enable 6 to 8 subject selection","educationQualification_6to8_enabled",window.__educationQualification.tracks["6to8"]?.enabled!==false)}
+        ${field("6 to 8 Subjects (comma separated)","educationQualification_6to8_subjects","text",(window.__educationQualification.tracks["6to8"]?.subjects||[]).join(", "))}
       </div>
     </div>
     <div id="fieldTable"></div>
