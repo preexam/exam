@@ -46,16 +46,41 @@ module.exports=async function handler(req,res){
     if(settings.maintenanceMode||settings.applicationOpen===false){
       return json(res,{error:"Applications are currently closed."},412,req);
     }
-    const activeExamId=String(settings.activeExamId||"default");
-    if(!activeExamId||activeExamId==="default"){
-      return json(res,{error:"Exam configuration is not available. Please try again later."},412,req);
+    let activeExamId=String(settings.activeExamId||"").trim();
+    let exam=null;
+
+    // Prefer the Admin-selected active exam. If the setting is still "default"
+    // or points to a missing exam, recover gracefully by selecting the newest
+    // non-closed exam whose application window is currently open.
+    if(activeExamId && activeExamId!=="default"){
+      const examSnap=await db.doc("exams/"+activeExamId).get();
+      if(examSnap.exists)exam={id:examSnap.id,...examSnap.data()};
     }
-    const examSnap=await db.doc("exams/"+activeExamId).get();
-    if(!examSnap.exists)return json(res,{error:"Exam configuration is not available. Please try again later."},412,req);
-    const exam=examSnap.data();
-    if(exam.status==="Closed"||exam.status==="Archived"){
-      return json(res,{error:"Applications are currently closed."},412,req);
+
+    if(!exam){
+      const examsSnap=await db.collection("exams").get();
+      const now=Date.now();
+      const openExams=examsSnap.docs
+        .map(s=>({id:s.id,...s.data()}))
+        .filter(x=>x.status!=="Closed"&&x.status!=="Archived")
+        .filter(x=>{
+          const start=Number(x.applicationStartMs)||Date.parse(x.applicationStart||"");
+          const end=Number(x.applicationEndMs)||Date.parse(x.applicationEnd||"");
+          return (!Number.isFinite(start)||now>=start)&&(!Number.isFinite(end)||now<=end);
+        })
+        .sort((a,b)=>{
+          const aStart=Number(a.applicationStartMs)||Date.parse(a.applicationStart||"")||0;
+          const bStart=Number(b.applicationStartMs)||Date.parse(b.applicationStart||"")||0;
+          return bStart-aStart;
+        });
+      exam=openExams[0]||null;
+      if(exam)activeExamId=exam.id;
     }
+
+    if(!exam||!activeExamId){
+      return json(res,{error:"Exam configuration is not available. Please open a valid exam application window in the Admin panel."},412,req);
+    }
+
     const now=Date.now();
     const start=Number(exam.applicationStartMs)||Date.parse(exam.applicationStart||"");
     const end=Number(exam.applicationEndMs)||Date.parse(exam.applicationEnd||"");
