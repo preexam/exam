@@ -116,7 +116,7 @@ module.exports=async function handler(req,res){
   }catch(error){
     if(createdUid){try{await auth.deleteUser(createdUid);}catch(cleanupError){console.error("registerCandidate cleanup",cleanupError)}}
     console.error("registerCandidate",error);
-    const message=error?.message||"Registration failed. Please try again.";
+    const message=error?.code==="auth/phone-number-already-exists"?"This mobile number is already registered. Please use Sign In or Forgot Application Number.":error?.message||"Registration failed. Please try again.";
     return json(res,{error:message},message.includes("already registered")?409:500,req);
   }
 };
