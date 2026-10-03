@@ -33,3 +33,11 @@ test("candidate application remains usable at mobile width",async({page})=>{
   const viewport=await page.evaluate(()=>window.innerWidth);
   expect(width).toBeLessThanOrEqual(viewport+3);
 });
+
+test("candidate credential recovery controls are present on all access pages",async({page})=>{
+  for(const path of ["/application.html","/admit-card.html","/result.html"]){
+    await page.goto(path,{waitUntil:"domcontentloaded"});
+    await expect(page.locator('[data-recovery="application"]')).toHaveCount(1);
+    await expect(page.locator('[data-recovery="password"]')).toHaveCount(1);
+  }
+});
