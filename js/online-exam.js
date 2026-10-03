@@ -41,6 +41,7 @@ async function login(e){
     if(!a.exists())throw new Error("Application not found");
     app={id:a.id,...a.data()};
     if(!["Final Submitted","Approved"].includes(app.status))throw new Error("Application is not eligible for the online exam.");
+    if(String(app.examId||"")!==String(examId))throw new Error("This application is not assigned to the selected online examination.");
     if(exam.onlineExamRequiresPayment===true&&app.paymentStatus!=="Successful")throw new Error("Successful payment is required for this exam.");
     const attemptId=`${examId}_${n}`;
     const ar=await getDoc(doc(db,"onlineAttempts",attemptId));

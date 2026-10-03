@@ -16,9 +16,23 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/applications/$(appId))
         && get(/databases/$(database)/documents/applications/$(appId)).data.authUid == request.auth.uid;
     }
-    function ownerCreate() {
-      return signedIn() && request.resource.data.authUid == request.auth.uid
-        && request.resource.data.candidateId == request.auth.uid;
+    function activeExamId() {
+      return exists(/databases/$(database)/documents/settings/portal)
+        ? get(/databases/$(database)/documents/settings/portal).data.get('activeExamId', 'default')
+        : 'default';
+    }
+    function ownerCreate(applicationId) {
+      return signedIn()
+        && request.resource.data.keys().hasOnly([
+          'applicationNumber','authUid','candidateId','personal','status',
+          'paymentStatus','examId','createdAt','updatedAt'
+        ])
+        && request.resource.data.applicationNumber == applicationId
+        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.candidateId == request.auth.uid
+        && request.resource.data.status == 'Application Incomplete'
+        && request.resource.data.paymentStatus == 'Pending'
+        && request.resource.data.examId == activeExamId();
     }
     function correctionOpen(app) {
       return signedIn()
@@ -50,7 +64,7 @@ service cloud.firestore {
       allow delete: if permission('applications');
     }
     match /applications/{id} {
-      allow create: if ownerCreate();
+      allow create: if ownerCreate(id);
       allow read: if permission('applications') || owner(id);
       allow update: if permission('applications') || (
         owner(id)
@@ -62,7 +76,7 @@ service cloud.firestore {
         && request.resource.data.paymentStatus == resource.data.paymentStatus
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'personal','address','education','category','other','documents','documentVerification','status',
+          'personal','address','education','category','other','documents','status',
           'declarationAccepted','updatedAt','finalSubmittedAt'
         ])
       );
@@ -90,6 +104,7 @@ service cloud.firestore {
         && request.resource.data.applicationNumber != null
         && exists(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber))
         && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.authUid == request.auth.uid
+        && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.examId == request.resource.data.examId
         && get(/databases/$(database)/documents/applications/$(request.resource.data.applicationNumber)).data.status in ['Final Submitted','Approved']
         && exists(/databases/$(database)/documents/exams/$(request.resource.data.examId))
         && get(/databases/$(database)/documents/exams/$(request.resource.data.examId)).data.onlineExamEnabled == true
@@ -115,7 +130,8 @@ service cloud.firestore {
           (request.resource.data.status == 'Submitted'
             && request.resource.data.answers == resource.data.answers
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','submittedAt','autoSubmitted','updatedAt','currentIndex'])
-            && request.resource.data.submittedAt != null)
+            && request.resource.data.submittedAt != null
+            && request.time <= resource.data.expiresAt + duration.value(5, 's'))
         )
       );
       allow delete: if permission('results');

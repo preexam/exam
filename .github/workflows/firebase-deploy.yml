@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
@@ -34,7 +34,15 @@ jobs:
           set -euo pipefail
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
 
-          bucket="$(node -e "const fs=require('fs'); const text=fs.readFileSync('js/firebase-config.js','utf8'); const match=text.match(/storageBucket:\s*['\\"]([^'\\"]+)['\\"]/); if(!match) process.exit(1); process.stdout.write(match[1]);")"
+          bucket="$(
+            node <<'NODE'
+const fs = require("fs");
+const text = fs.readFileSync("js/firebase-config.js", "utf8");
+const match = text.match(/storageBucket:\s*["']([^"']+)["']/);
+if (!match) process.exit(1);
+process.stdout.write(match[1]);
+NODE
+          )"
           test -n "$bucket" || { echo "::error::Could not determine Firebase Storage bucket from js/firebase-config.js."; exit 1; }
 
           candidates=("$bucket")

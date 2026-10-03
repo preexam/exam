@@ -1,4 +1,4 @@
-import {collection,doc,getDoc,getDocs,setDoc,addDoc,deleteDoc,query,orderBy,serverTimestamp,runTransaction,db,escapeHtml,showMsg} from "./firebase.js";
+import {collection,doc,getDoc,getDocs,setDoc,addDoc,deleteDoc,query,where,orderBy,serverTimestamp,runTransaction,db,escapeHtml,showMsg} from "./firebase.js";
 
 const $=s=>document.querySelector(s);
 const esc=v=>escapeHtml(v??"");
@@ -75,7 +75,11 @@ async function onlineExamConfig(id=null){
       updatedAt:serverTimestamp()
     };
     if(update.onlineExamNegativeMark>update.onlineExamMarksPerQuestion) return showMsg($("#oeCfgMsg"),"Negative marks cannot exceed marks per question.",true);
-    if(update.onlineExamPublished){const current=await getDoc(doc(db,"exams",eid));const count=Number(current.data()?.questionCount||0);if(count<update.onlineExamTotalQuestions)return showMsg($("#oeCfgMsg"),"Add enough active questions before publishing.",true)}
+    if(update.onlineExamPublished){
+      const activeSnap=await getDocs(query(collection(db,"onlineQuestions",eid,"items"),where("active","==",true)));
+      const count=activeSnap.size;
+      if(count<update.onlineExamTotalQuestions)return showMsg($("#oeCfgMsg"),`Add at least ${update.onlineExamTotalQuestions} active questions before publishing. Currently ${count} are active.`,true);
+    }
     await setDoc(doc(db,"exams",eid),update,{merge:true});
     showMsg($("#oeCfgMsg"),"Online exam configuration saved.");
   };
@@ -128,6 +132,14 @@ async function onlineQuestions(examId){
   $("#panel").querySelectorAll("[data-del-q]").forEach(b=>b.onclick=async()=>{
     const id=b.dataset.delQ;
     if(!confirm("Delete this question?"))return;
+    const examSnap=await getDoc(doc(db,"exams",examId));
+    const examData=examSnap.exists()?examSnap.data():{};
+    const questionSnap=await getDoc(doc(db,"onlineQuestions",examId,"items",id));
+    if(examData.onlineExamPublished===true && questionSnap.exists() && questionSnap.data().active!==false){
+      const activeSnap=await getDocs(query(collection(db,"onlineQuestions",examId,"items"),where("active","==",true)));
+      const required=Math.max(1,Number(examData.onlineExamTotalQuestions||1));
+      if(activeSnap.size<=required)return showMsg($("#oeMsg"),"Cannot delete an active question while the exam is published; keep enough active questions for the configured paper.",true);
+    }
     await deleteDoc(doc(db,"onlineQuestions",examId,"items",id));
     await deleteDoc(doc(db,"onlineAnswerKeys",examId,"items",id));
     await runTransaction(db,async tx=>{

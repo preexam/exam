@@ -17,14 +17,12 @@ export default async function handler(request) {
   }
 
   const eventId = request.headers.get("x-razorpay-event-id") || "";
-  if (eventId) {
-    const eventRef = db.doc("razorpayWebhookEvents/" + eventId);
+  const eventRef = eventId ? db.doc("razorpayWebhookEvents/" + eventId) : null;
+  if (eventRef) {
     const existing = await eventRef.get();
-    if (existing.exists) return new Response("OK", { status: 200 });
-    await eventRef.set({
-      receivedAt: admin.firestore.FieldValue.serverTimestamp(),
-      event: event.event || ""
-    });
+    if (existing.exists && existing.data()?.status === "Processed") {
+      return new Response("OK", { status: 200 });
+    }
   }
 
   try {
@@ -58,6 +56,14 @@ export default async function handler(request) {
       }
     }
 
+    if (eventRef) {
+      await eventRef.set({
+        receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+        processedAt: admin.firestore.FieldValue.serverTimestamp(),
+        event: event.event || "",
+        status: "Processed"
+      }, { merge: true });
+    }
     return new Response("OK", { status: 200 });
   } catch (error) {
     console.error("razorpayWebhook", error);

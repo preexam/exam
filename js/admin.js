@@ -1948,7 +1948,7 @@ async function formBuilder(){
     declaration:settingsData.formSections?.declaration!==false
   };
 
-  const educationQualification={...defaultEducationQualification,...(settingsData.educationQualification||{}),tracks:{...defaultEducationQualification.tracks,...Object.fromEntries(Object.entries(settingsData.educationQualification?.tracks||{}).map(([key,value])=>[key,{...defaultEducationQualification.tracks[key],...(value||{}),subjects:Array.isArray(value?.subjects)?value.subjects.filter(Boolean).map(String):defaultEducationQualification.tracks[key]?.subjects||[]}]))}};
+  window.__educationQualification={...defaultEducationQualification,...(settingsData.educationQualification||{}),tracks:{...defaultEducationQualification.tracks,...Object.fromEntries(Object.entries(settingsData.educationQualification?.tracks||{}).map(([key,value])=>[key,{...defaultEducationQualification.tracks[key],...(value||{}),subjects:Array.isArray(value?.subjects)?value.subjects.filter(Boolean).map(String):defaultEducationQualification.tracks[key]?.subjects||[]}]))}};
 
   panel.innerHTML=`
     <h2>Application Form Builder</h2>
@@ -2047,6 +2047,26 @@ async function formBuilder(){
 }
 
 async function saveStudentFormSettings(){
+
+  const educationQualification={
+    ...defaultEducationQualification,
+    ...(window.__educationQualification||{}),
+    tracks:{
+      ...defaultEducationQualification.tracks,
+      ...(window.__educationQualification?.tracks||{})
+    }
+  };
+  educationQualification.enabled=!!document.querySelector('[name="educationQualificationEnabled"]')?.checked;
+  educationQualification.tracks["1to5"]={
+    ...educationQualification.tracks["1to5"],
+    enabled:!!document.querySelector('[name="educationQualification_1to5_enabled"]')?.checked,
+    subjects:(document.querySelector('[name="educationQualification_1to5_subjects"]')?.value||"").split(",").map(x=>x.trim()).filter(Boolean)
+  };
+  educationQualification.tracks["6to8"]={
+    ...educationQualification.tracks["6to8"],
+    enabled:!!document.querySelector('[name="educationQualification_6to8_enabled"]')?.checked,
+    subjects:(document.querySelector('[name="educationQualification_6to8_subjects"]')?.value||"").split(",").map(x=>x.trim()).filter(Boolean)
+  };
 
   const enabled={};
   document.querySelectorAll("[data-builtin-field]").forEach(input=>{
@@ -4924,7 +4944,7 @@ async function settings(){
         ${field("Portal Name","portalName","text",x.portalName||"")}
         ${field("Short Name","portalShortName","text",x.portalShortName||"")}
         ${field("Application Prefix","applicationPrefix","text",x.applicationPrefix||"EXAM")}
-        ${field("Active Exam Code","activeExamId","text",x.activeExamId||"default",'placeholder="e.g. jtet001"')}}
+        ${field("Active Exam Code","activeExamId","text",x.activeExamId||"default",'placeholder="e.g. jtet001"')}
         ${field("Public Notice / Footer","footerText","text",x.footerText||"")}
         <div class="actions">
           <button class="btn primary">Save Portal Basics</button>
@@ -4961,7 +4981,6 @@ async function settings(){
       <h3>Security & Maintenance</h3>
       <form id="settingsSecurity" class="form-grid">
         ${check("Maintenance Mode","maintenanceMode",!!x.maintenanceMode)}
-        ${check("Require OTP / MFA for admins","adminMfaRequired",!!x.adminMfaRequired)}
         <div class="actions">
           <button class="btn primary">Save Security Settings</button>
         </div>
@@ -4991,7 +5010,7 @@ async function settings(){
       }
     }
     for(const n of fields){
-      if(["applicationOpen","admitCardPublished","resultPublished","maintenanceMode","adminMfaRequired"].includes(n)){
+      if(["applicationOpen","admitCardPublished","resultPublished","maintenanceMode"].includes(n)){
         v[n]=bool(form,n);
       }
     }
@@ -5027,7 +5046,7 @@ async function settings(){
 
   $("#settingsSecurity").onsubmit=e=>{
     e.preventDefault();
-    savePart(e.target,["maintenanceMode","adminMfaRequired"],"settingsSecurityMsg");
+    savePart(e.target,["maintenanceMode"],"settingsSecurityMsg");
   };
 
   $("#backupMeta").onclick=()=>{
@@ -5054,7 +5073,6 @@ function renderSettingsSummary(x){
     ["Admit Card Published",x.admitCardPublished?"Enabled":"Disabled"],
     ["Result Published",x.resultPublished?"Enabled":"Disabled"],
     ["Maintenance Mode",x.maintenanceMode?"Enabled":"Disabled"],
-    ["Admin MFA",x.adminMfaRequired?"Enabled":"Disabled"],
     ["Enabled Student Fields",Object.entries(x.formFieldEnabled||{}).filter(([,v])=>v!==false).map(([k])=>k).join(", ")||"All built-in fields by default"]
   ];
 
