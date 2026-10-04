@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">BOOKESH</title><desc id="desc">BOOKESH Exam Portal logo</desc>
+<rect width="512" height="512" rx="96" fill="#fff"/>
+<rect x="34" y="34" width="444" height="444" rx="82" fill="#08264d"/>
+<path d="M132 126h112c62 0 101 31 101 80 0 31-17 56-46 69 38 12 59 39 59 75 0 56-43 86-116 86H132V126zm72 57v68h37c25 0 39-12 39-34 0-22-14-34-40-34h-36zm0 125v70h42c30 0 46-12 46-35 0-24-16-35-47-35h-41z" fill="#fff"/>
+<circle cx="384" cy="108" r="28" fill="#ff7a00"/>
+<text x="256" y="457" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="800" fill="#ff7a00" letter-spacing="4">BOOKESH</text>
+</svg>
