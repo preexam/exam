@@ -17,6 +17,11 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/candidates/$(request.auth.uid))
         && get(/databases/$(database)/documents/candidates/$(request.auth.uid)).data.applicationNumber == appId;
     }
+    function candidateApplicationOwner(appId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/candidates/$(request.auth.uid))
+        && get(/databases/$(database)/documents/candidates/$(request.auth.uid)).data.applicationNumber == appId;
+    }
     function owner(appId) {
       return signedIn() && exists(/databases/$(database)/documents/applications/$(appId))
         && (
@@ -77,6 +82,7 @@ service cloud.firestore {
       allow read: if permission('applications') || (signedIn() && (
         resource.data.authUid == request.auth.uid ||
         resource.data.candidateId == request.auth.uid ||
+        candidateApplicationOwner(id) ||
         candidateApplicationOwner(id)
       ));
       allow update: if permission('applications') || (
