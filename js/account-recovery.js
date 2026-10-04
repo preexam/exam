@@ -60,7 +60,7 @@ async function submitRecovery(mode,form){
   const mobile=form.querySelector("#recoveryMobile").value.trim();
   const dob=form.querySelector("#recoveryDob").value;
   const msg=form.querySelector("#recoveryMsg");
-  if(!/^\d{10}$.test(mobile)){msg.textContent="Mobile number must be exactly 10 digits.";msg.className="message danger-text";return}
+  if(!/^\d{10}$/.test(mobile)){msg.textContent="Mobile number must be exactly 10 digits.";msg.className="message danger-text";return}
   if(!dob){msg.textContent="Date of birth is required.";msg.className="message danger-text";return}
   const password=form.querySelector("#recoveryPassword")?.value||"";
   const confirm=form.querySelector("#recoveryPasswordConfirm")?.value||"";
