@@ -614,7 +614,7 @@ async function deleteCandidate(id){
     const user=auth.currentUser;
     if(!user)throw new Error("Admin session expired. Please sign in again.");
     const token=await user.getIdToken();
-    const response=await fetch("/api/adminDeleteCandidate",{
+    const response=await fetch("https://exam-henna-two.vercel.app/api/adminDeleteCandidate",{
       method:"POST",
       headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
       body:JSON.stringify({candidateId:id,applicationNumber:x.applicationNumber||""})
@@ -1940,8 +1940,8 @@ const BUILTIN_FIELDS=[
   ["mobile","Mobile Number","Text","personal"],
   ["email","Email ID","Text","personal"],
   ["alternateMobile","Alternate Mobile","Text","personal"],
-  ["examPost","Exam/Post Applied For","Text","personal"],
-  ["examLanguage","Exam Language / Medium","Dropdown","personal"],
+  ["examPost","Exam/Post Applied For","Text","education"],
+  ["examLanguage","Exam Language / Medium","Dropdown","education"],
   ["guardianName","Guardian Name","Text","personal"],
   ["guardianRelation","Guardian Relationship","Text","personal"],
   ["guardianOccupation","Guardian Occupation","Text","personal"],
