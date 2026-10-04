@@ -60,16 +60,7 @@ $("#loginForm").onsubmit=async e=>{
     const credential=await signInWithEmailAndPassword(auth,`${n.toLowerCase()}@candidate.examportal.local`,password);
     const signedInUser=credential.user;
     const a=await getDoc(doc(db,"applications",n));
-    let applicationOwned=false;
-    if(a.exists()){
-      const data=a.data()||{};
-      applicationOwned=data.authUid===signedInUser.uid||data.candidateId===signedInUser.uid;
-      if(!applicationOwned){
-        const candidateSnap=await getDoc(doc(db,"candidates",signedInUser.uid));
-        applicationOwned=candidateSnap.exists()&&candidateSnap.data()?.applicationNumber===n;
-      }
-    }
-    if(!applicationOwned){
+    if(!a.exists()||a.data().authUid!==signedInUser.uid){
       await signOut(auth);
       showMsg(msg,"Application not found or access denied. / Application नहीं मिला या access denied है।",true);
       return;
