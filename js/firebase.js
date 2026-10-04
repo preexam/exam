@@ -1,8 +1,8 @@
 import { auth, db, storage } from "./firebase-config.js";
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp, Timestamp, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-storage.js";
-export {auth,db,storage,ref,uploadBytes,getDownloadURL,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,Timestamp,writeBatch,runTransaction,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword};
+export {auth,db,storage,ref,uploadBytes,getDownloadURL,collection,doc,getDoc,getDocs,setDoc,addDoc,updateDoc,deleteDoc,query,where,orderBy,limit,serverTimestamp,Timestamp,writeBatch,runTransaction,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,setPersistence,browserLocalPersistence};
 export const clean=v=>String(v??"").trim();
 export function appNo(prefix="EXAM"){const p=String(prefix||"EXAM").replace(/[^A-Za-z0-9]/g,"").slice(0,12)||"EXAM";const id=typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID().replace(/-/g,"").slice(0,14).toUpperCase():`${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`.toUpperCase();return `${p}${id}`;}
 export const escapeHtml=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
