@@ -773,6 +773,44 @@ async function exams(){
       )}
 
       ${field(
+        "Reporting Time",
+        "reportingTime",
+        "time"
+      )}
+
+      ${field(
+        "Gate Closing Time",
+        "gateClosingTime",
+        "time"
+      )}
+
+      ${field(
+        "Exam Time",
+        "examTime",
+        "text",
+        "09:00 AM – 11:30 AM"
+      )}
+
+      ${field(
+        "Required ID",
+        "requiredId",
+        "text",
+        "Valid Government Photo ID"
+      )}
+
+      ${field(
+        "Allowed / Restricted Items",
+        "allowedItems",
+        "text"
+      )}
+
+      ${field(
+        "Admit Card Instructions",
+        "instructions",
+        "text"
+      )}
+
+      ${field(
         "Application Fee",
         "fee",
         "number",
