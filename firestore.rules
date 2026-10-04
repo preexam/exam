@@ -12,18 +12,9 @@ service cloud.firestore {
         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.permissions[p] == true
       ));
     }
-    function candidateApplicationOwner(appId) {
-      return signedIn()
-        && exists(/databases/$(database)/documents/candidates/$(request.auth.uid))
-        && get(/databases/$(database)/documents/candidates/$(request.auth.uid)).data.applicationNumber == appId;
-    }
     function owner(appId) {
       return signedIn() && exists(/databases/$(database)/documents/applications/$(appId))
-        && (
-          get(/databases/$(database)/documents/applications/$(appId)).data.authUid == request.auth.uid ||
-          get(/databases/$(database)/documents/applications/$(appId)).data.candidateId == request.auth.uid ||
-          candidateApplicationOwner(appId)
-        );
+        && get(/databases/$(database)/documents/applications/$(appId)).data.authUid == request.auth.uid;
     }
     function activeExamId() {
       return exists(/databases/$(database)/documents/settings/portal)
@@ -76,15 +67,14 @@ service cloud.firestore {
       allow create: if ownerCreate(id);
       allow read: if permission('applications') || (signedIn() && (
         resource.data.authUid == request.auth.uid ||
-        resource.data.candidateId == request.auth.uid ||
-        candidateApplicationOwner(id)
+        resource.data.candidateId == request.auth.uid
       ));
       allow update: if permission('applications') || (
         owner(id)
         && resource.data.status != 'Final Submitted'
-        && request.resource.data.authUid == request.auth.uid
+        && request.resource.data.authUid == resource.data.authUid
         && request.resource.data.applicationNumber == resource.data.applicationNumber
-        && request.resource.data.candidateId == request.auth.uid
+        && request.resource.data.candidateId == resource.data.candidateId
         && (request.resource.data.status == resource.data.status || (resource.data.status == 'Application Incomplete' && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && paymentSatisfied(request.resource.data)) || (resource.data.status == 'Correction Required' && correctionOpen(resource.data) && request.resource.data.status == 'Final Submitted' && request.resource.data.declarationAccepted == true && paymentSatisfied(request.resource.data))) && (resource.data.status != 'Correction Required' || correctionOpen(resource.data))
         && request.resource.data.paymentStatus == resource.data.paymentStatus
         && request.resource.data.createdAt == resource.data.createdAt
