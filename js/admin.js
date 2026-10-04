@@ -1879,6 +1879,7 @@ const BUILTIN_FIELDS=[
   ["pin","PIN Code","Text","address"],
   ["correspondenceDifferent","Correspondence Address Different","Yes/No","address"],
   ["permanentAddress","Permanent Address","Textarea","address"],
+  ["correspondenceAddress","Correspondence Address","Textarea","address"],
 
   ["board10","10th Board","Text","education"],
   ["year10","10th Passing Year","Number","education"],
@@ -1937,6 +1938,9 @@ async function formBuilder(){
   window.__formFieldEnabled={
     ...(settingsData.formFieldEnabled||{})
   };
+  window.__formFieldRequired={
+    ...(settingsData.formFieldRequired||{})
+  };
   window.__formSections={
     personal:settingsData.formSections?.personal!==false,
     address:settingsData.formSections?.address!==false,
@@ -1971,7 +1975,8 @@ async function formBuilder(){
         ${check("Personal Details","section_personal",window.__formSections.personal)}
         ${check("Address Details","section_address",window.__formSections.address)}
         ${check("Education & Educational Qualification","section_education",window.__formSections.education)}
-        ${check("Category / Other Details","section_category",window.__formSections.category)}
+        ${check("Category Details","section_category",window.__formSections.category)}
+        ${check("Other Details","section_other",window.__formSections.other)}
         ${check("Photo & Signature","section_photo",window.__formSections.photo)}
         ${check("Documents","section_documents",window.__formSections.documents)}
         ${check("Declaration","section_declaration",window.__formSections.declaration)}
@@ -2035,7 +2040,7 @@ async function formBuilder(){
     BUILTIN_FIELDS.forEach(([key])=>defaults[key]=true);
     await setDoc(
       doc(db,"settings","portal"),
-      {formFieldEnabled:defaults,updatedAt:serverTimestamp()},
+      {formFieldEnabled:defaults,formFieldRequired:{fullName:true,dob:true},updatedAt:serverTimestamp()},
       {merge:true}
     );
     await log("STUDENT_FORM_FIELDS_RESET");
@@ -2069,11 +2074,15 @@ async function saveStudentFormSettings(){
   };
 
   const enabled={};
+  const required={};
   document.querySelectorAll("[data-builtin-field]").forEach(input=>{
     enabled[input.dataset.builtinField]=input.checked;
   });
+  document.querySelectorAll("[data-builtin-required]").forEach(input=>{
+    required[input.dataset.builtinRequired]=input.checked;
+  });
 
-  const sectionKeys=["personal","address","education","category","photo","documents","declaration"];
+  const sectionKeys=["personal","address","education","category","other","photo","documents","declaration"];
   const formSections=Object.fromEntries(sectionKeys.map(k=>[k,!!document.querySelector(`[name="section_${k}"]`)?.checked]));
   const batch=writeBatch(db);
 
@@ -2088,6 +2097,7 @@ async function saveStudentFormSettings(){
     doc(db,"settings","portal"),
     {
       formFieldEnabled:enabled,
+      formFieldRequired:required,
       formSections,
       educationQualification,
       updatedAt:serverTimestamp()
@@ -2121,6 +2131,14 @@ function renderFields(){
             >
             ${enabled?"Enabled":"Disabled"}
           </td>
+          <td>
+            <input
+              type="checkbox"
+              data-builtin-required="${esc(x[0])}"
+              ${Object.prototype.hasOwnProperty.call(window.__formFieldRequired||{},x[0]) ? window.__formFieldRequired[x[0]]===true ? "checked" : "" : ["fullName","dob"].includes(x[0]) ? "checked" : ""}
+            >
+            Required
+          </td>
           <td>Admin controlled</td>
         </tr>
       `;
@@ -2141,6 +2159,7 @@ function renderFields(){
           >
           ${x.visible!==false?"Enabled":"Disabled"}
         </td>
+        <td>${x.required?"Yes":"No"}</td>
         <td>
           ${x.required?"Required":"Optional"} / ${x.locked?"Locked":"Editable"}
           <button class="btn small" data-del-field="${esc(x.id)}">Delete</button>
@@ -2151,7 +2170,7 @@ function renderFields(){
   $("#fieldTable").innerHTML=section(
     "Student Form Controls",
     table(
-      ["Key","Name","Type","Section","Source","Student Access","Details"],
+      ["Key","Name","Type","Section","Source","Student Access","Required","Details"],
       rows
     )
   );
