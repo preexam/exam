@@ -12,6 +12,7 @@ for(const path of pages){
 }
 test("/application-dashboard.html redirects unauthenticated visitors",async({page})=>{
   const errors=[];
+  await page.addInitScript(()=>sessionStorage.clear());
   page.on("pageerror",err=>errors.push(String(err?.message||err)));
   const response=await page.goto("/application-dashboard.html",{waitUntil:"domcontentloaded"});
   expect(response&&response.status()).not.toBe(404);
