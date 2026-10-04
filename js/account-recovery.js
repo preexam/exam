@@ -9,7 +9,7 @@ function ensureModal(){
   modal.setAttribute("aria-hidden","true");
   modal.innerHTML=`<div class="account-modal-backdrop" data-modal-close></div>
     <div class="account-modal-card" role="dialog" aria-modal="true" aria-labelledby="accountModalTitle">
-      <button type="button" class="account-modal-close" aria-label="Close / बंद करें" data-modal-close>×</button>
+      <button type="button" class="account-modal-close" aria-label="Close" data-modal-close>×</button>
       <div id="accountModalIcon" class="account-modal-icon">i</div>
       <div id="accountModalContent"></div>
     </div>`;
@@ -40,20 +40,20 @@ export function showRegistrationSuccess(applicationNumber,onContinue){
     <p>Dear Candidate, please save your password securely. You will need this password to access and download your Admit Card and Result in the future.</p>
     <div class="account-number-box"><span>Application Number</span><strong>${escapeHtml(applicationNumber||"")}</strong></div>
     <p class="muted">Your account has been created successfully. Please continue by signing in to complete your application.</p>
-    <button type="button" class="btn primary account-modal-action" id="registrationContinue">OK, Continue to Sign In / ठीक है, Sign In करें / Sign In पर जाएं</button>`,"success");
+    <button type="button" class="btn primary account-modal-action" id="registrationContinue">OK, Continue to Sign In</button>`,"success");
   document.querySelector("#registrationContinue").onclick=()=>{closeModal();onContinue?.()};
 }
 function recoveryForm(mode){
   const password=mode==="password";
-  return `<span class="eyebrow">ACCOUNT RECOVERY / खाता रिकवरी</span>
-    <h2 id="accountModalTitle">${password?"Reset Password / पासवर्ड रीसेट करें":"Recover Application Number / Application Number प्राप्त करें"}</h2>
-    <p>${password?"अपने Registered Mobile Number / पंजीकृत मोबाइल नंबर और Date of Birth से account verify करें। इसके बाद नया Password सेट कर सकते हैं।":"Registration में इस्तेमाल किया गया Mobile Number और Date of Birth दर्ज करें। विवरण सही होने पर आपका Application Number दिखाया जाएगा।"}</p>
+  return `<span class="eyebrow">ACCOUNT RECOVERY</span>
+    <h2 id="accountModalTitle">${password?"Reset Password":"Recover Application Number"}</h2>
+    <p>${password?"Enter your registered mobile number and date of birth to verify your account. You will then be able to set a new password.":"Enter the mobile number and date of birth used during registration. If the details match, your Application Number will be displayed."}</p>
     <form id="recoveryForm">
-      <label>Registered Mobile Number / पंजीकृत मोबाइल नंबर<input id="recoveryMobile" inputmode="numeric" maxlength="10" autocomplete="tel" required></label>
+      <label>Registered Mobile Number<input id="recoveryMobile" inputmode="numeric" maxlength="10" autocomplete="tel" required></label>
       <label>Date of Birth<input id="recoveryDob" type="date" autocomplete="bday" required></label>
-      ${password?'<label>New Password / नया पासवर्ड<input id="recoveryPassword" type="password" minlength="8" autocomplete="new-password" required></label><label>Confirm New Password / नए पासवर्ड की पुष्टि करें / नया पासवर्ड<input id="recoveryPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required></label>':""}
+      ${password?'<label>New Password<input id="recoveryPassword" type="password" minlength="8" autocomplete="new-password" required></label><label>Confirm New Password<input id="recoveryPasswordConfirm" type="password" minlength="8" autocomplete="new-password" required></label>':""}
       <p id="recoveryMsg" class="message"></p>
-      <button class="btn primary account-modal-action" type="submit">${password?"Set New Password / नया पासवर्ड सेट करें / नया पासवर्ड":"Find Application Number / Application Number खोजें"}</button>
+      <button class="btn primary account-modal-action" type="submit">${password?"Set New Password":"Find Application Number"}</button>
     </form>`;
 }
 async function submitRecovery(mode,form){
@@ -66,31 +66,31 @@ async function submitRecovery(mode,form){
   const confirm=form.querySelector("#recoveryPasswordConfirm")?.value||"";
   if(mode==="password"){
     if(password.length<8){msg.textContent="New password must be at least 8 characters.";msg.className="message danger-text";return}
-    if(password!==confirm){msg.textContent="New Password / नया पासवर्ड and Confirm New Password / नए पासवर्ड की पुष्टि करें / नया पासवर्ड do not match.";msg.className="message danger-text";return}
+    if(password!==confirm){msg.textContent="New Password and Confirm New Password do not match.";msg.className="message danger-text";return}
   }
   const button=form.querySelector("button[type=submit]");
   button.disabled=true;
-  msg.textContent="Verifying your details... / आपके विवरण सत्यापित किए जा रहे हैं...";
+  msg.textContent="Verifying your details...";
   try{
     const response=await fetch(API_BASE+"/api/recoverCandidate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode,mobile,dob,newPassword:password})});
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data.error||"We could not verify those details.");
     if(mode==="application"){
-      openModal(`<span class="eyebrow">ACCOUNT RECOVERY / खाता रिकवरी</span><h2 id="accountModalTitle">Application Number Found / Application Number मिल गया</h2>
-        <p>Your details have been verified successfully. / आपके विवरण सफलतापूर्वक सत्यापित हो गए हैं।</p>
+      openModal(`<span class="eyebrow">ACCOUNT RECOVERY</span><h2 id="accountModalTitle">Application Number Found</h2>
+        <p>Your details have been verified successfully.</p>
         <div class="account-number-box"><span>Application Number</span><strong>${escapeHtml(data.applicationNumber)}</strong></div>
-        <p class="muted">इस नंबर को सुरक्षित रखें। इसकी जरूरत Sign In, Application, Admit Card और Result देखने के लिए होगी।</p>
-        <button type="button" class="btn primary account-modal-action" id="recoveryContinue">Continue to Sign In / Sign In पर जाएं</button>`,"success");
+        <p class="muted">Please keep this number safe. You will need it to sign in, access your application, download your Admit Card and view your Result.</p>
+        <button type="button" class="btn primary account-modal-action" id="recoveryContinue">Continue to Sign In</button>`,"success");
       document.querySelector("#recoveryContinue").onclick=()=>{
         closeModal();
         const input=document.querySelector("#loginApp,#admitApp,#resultApp");
         if(input)input.value=data.applicationNumber;
       };
     }else{
-      openModal(`<span class="eyebrow">PASSWORD UPDATED / पासवर्ड अपडेट</span><h2 id="accountModalTitle">Password Reset Successful / पासवर्ड सफलतापूर्वक रीसेट हो गया</h2>
-        <p>Your password has been updated successfully. / आपका Password सफलतापूर्वक अपडेट हो गया है।</p>
-        <p class="muted">अब आप Application Number और नए Password से Sign In कर सकते हैं।</p>
-        <button type="button" class="btn primary account-modal-action" id="recoveryContinue">OK, Continue to Sign In / ठीक है, Sign In करें / Sign In पर जाएं</button>`,"success");
+      openModal(`<span class="eyebrow">PASSWORD UPDATED</span><h2 id="accountModalTitle">Password Reset Successful</h2>
+        <p>Your password has been updated successfully.</p>
+        <p class="muted">You can now sign in using your Application Number and new password.</p>
+        <button type="button" class="btn primary account-modal-action" id="recoveryContinue">OK, Continue to Sign In</button>`,"success");
       document.querySelector("#recoveryContinue").onclick=()=>{
         closeModal();
         const appInput=document.querySelector("#loginApp,#admitApp,#resultApp");
