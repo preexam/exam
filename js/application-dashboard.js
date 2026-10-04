@@ -110,7 +110,6 @@ async function startPayment(){
 }
 
 document.querySelector("#payNow")?.addEventListener("click",startPayment);
-});
 
 function sec(t,b){const n=String(t||"");const key=n.startsWith("1.")?"personal":n.startsWith("2.")?"address":n.startsWith("3.")?"education":n.startsWith("4.")||n.startsWith("5A.")?"category":n.startsWith("5.")||n.startsWith("6.")||n.startsWith("6A.")?"documents":n.startsWith("7.")?"declaration":n.startsWith("8.")?"payment":null;if(n.startsWith("5.")&&!formSections.photo)return "";if((n.startsWith("6.")||n.startsWith("6A."))&&!formSections.documents)return "";if(n.startsWith("5A.")&&!formSections.category)return "";if(key&&!formSections[key]&&key!=="documents-supporting")return "";const id=key||"extra";return `<section id="section-${id}" class="application-section" data-section="${id}"><h2 class="section-title">${t}</h2>${b}</section>`}
 
