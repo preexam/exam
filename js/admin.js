@@ -2712,10 +2712,11 @@ async function centres(){
 
             <button
               class="btn small"
-              data-centre="${x.id}"
+              data-edit-centre="${esc(x.id)}"
             >
-              Toggle
+              Edit
             </button>
+            <button class="btn small" data-centre="${x.id}">Toggle</button>
             <button class="btn small danger" data-delete-centre="${esc(x.id)}">Delete</button>
 
           </td>
@@ -2723,6 +2724,18 @@ async function centres(){
         </tr>
       `)
     );
+
+  $("#centreTable").querySelectorAll("[data-edit-centre]").forEach(b=>b.onclick=()=>{
+    const x=window.__centres.find(c=>c.id===b.dataset.editCentre);
+    if(!x)return;
+    const form=$("#centreForm");
+    Object.entries({code:x.id,...x}).forEach(([k,v])=>{
+      const el=form?.elements?.[k];
+      if(!el)return;
+      if(el.type==="checkbox")el.checked=!!v;else el.value=v??"";
+    });
+    form?.scrollIntoView({behavior:"smooth",block:"center"});
+  });
 
   $("#centreTable")
     .querySelectorAll("[data-centre]")
