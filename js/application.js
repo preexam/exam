@@ -1,4 +1,4 @@
-import {auth,db,doc,getDoc,showMsg,signInWithEmailAndPassword,signOut} from "./firebase.js";
+import {auth,db,doc,getDoc,showMsg,signInWithEmailAndPassword,signOut,setPersistence,browserLocalPersistence} from "./firebase.js";
 import {showRegistrationSuccess,setupRecoveryLinks} from "./account-recovery.js";
 
 const $=s=>document.querySelector(s);
