@@ -33,6 +33,7 @@ $("#registerForm").onsubmit=async e=>{
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(data.error||"Registration failed. Please try again.");
+    sessionStorage.setItem("candidatePassword",password);
     await signOut(auth).catch(()=>{});
     $("#loginApp").value=data.applicationNumber||"";
     $("#loginPass").value="";
@@ -54,6 +55,7 @@ $("#loginForm").onsubmit=async e=>{
     const a=await getDoc(doc(db,"applications",n));
     if(!a.exists()||a.data().authUid!==auth.currentUser?.uid){await signOut(auth);showMsg($("#loginMsg"),"Application not found or access denied.",true);return}
     sessionStorage.setItem("candidateApp",n);
+    sessionStorage.setItem("candidatePassword",$("#loginPass").value);
     location.href="application-dashboard.html";
   }catch(e){
     showMsg($("#loginMsg"),"Login failed. Check your Application Number and password.",true);

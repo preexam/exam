@@ -232,3 +232,23 @@ body:has(.application-form) .step-footer .btn.primary{background:linear-gradient
   body:has(#registerForm) .auth-tab{min-width:0;overflow-wrap:anywhere;word-break:normal}
   body:has(#registerForm) .form-grid>*{min-width:0}
 }
+
+
+/* Final submission confirmation + complete application print */
+body.submission-modal-open{overflow:hidden}
+.submission-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px}
+.submission-modal[hidden]{display:none}
+.submission-modal-backdrop{position:absolute;inset:0;background:rgba(3,12,28,.68);backdrop-filter:blur(5px)}
+.submission-modal-dialog{position:relative;width:min(560px,100%);max-height:min(90vh,760px);overflow:auto;padding:30px;border-radius:22px;background:#fff;box-shadow:0 30px 90px rgba(0,0,0,.28);text-align:center}
+.submission-success-icon{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 13px;border-radius:50%;background:#ecfdf3;color:#059669;font-size:29px;font-weight:900;border:6px solid #d1fae5}
+.submission-modal-dialog h2{margin:4px 0 8px;color:#0e376d;font-size:25px}
+.submission-lead{margin:0 auto 20px;color:#475467;font-size:14px}
+.credential-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+.credential-card{text-align:left;padding:15px;border:1px solid #dbe3ef;border-radius:13px;background:#f8fbff}
+.credential-card span{display:block;color:#667085;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+.credential-card strong{display:block;color:#102a50;font-size:15px;word-break:break-all}
+.submission-notice{text-align:left;padding:15px;border:1px solid #fed7aa;background:#fff8f0;border-radius:13px;color:#63330f;font-size:12px;line-height:1.55}
+.submission-notice p{margin:5px 0 0}.submission-notice .submission-warning{font-weight:750}
+.submission-actions{display:flex;justify-content:center;gap:10px;margin-top:20px}.submission-actions .btn{min-width:180px}
+body:has(#appForm) .actions .btn.submitted{background:#059669!important;color:#fff;opacity:1;cursor:not-allowed}
+@media(max-width:600px){.submission-modal{padding:12px}.submission-modal-dialog{padding:23px 17px;border-radius:18px}.credential-grid{grid-template-columns:1fr}.submission-actions{flex-direction:column}.submission-actions .btn{width:100%}}
