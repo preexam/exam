@@ -1,4 +1,4 @@
-import {auth,db,doc,getDoc,showMsg,signInWithEmailAndPassword,signOut} from "./firebase.js";
+import {auth,db,doc,getDoc,showMsg,signInWithEmailAndPassword,signOut,setPersistence,browserLocalPersistence} from "./firebase.js";
 import {showRegistrationSuccess,setupRecoveryLinks} from "./account-recovery.js";
 
 const $=s=>document.querySelector(s);
@@ -49,15 +49,41 @@ $("#registerForm").onsubmit=async e=>{
 $("#loginForm").onsubmit=async e=>{
   e.preventDefault();
   const n=$("#loginApp").value.trim().toUpperCase();
-  if(!n){showMsg($("#loginMsg"),"Please enter your Application Number.",true);return}
+  const password=$("#loginPass").value;
+  const msg=$("#loginMsg");
+  if(!n){showMsg(msg,"Please enter your Application Number / अपना Application Number दर्ज करें।",true);return}
+  if(!password){showMsg(msg,"Please enter your password / अपना Password दर्ज करें।",true);return}
+  const submit=e.submitter;
+  if(submit)submit.disabled=true;
   try{
-    await signInWithEmailAndPassword(auth,`${n.toLowerCase()}@candidate.examportal.local`,$("#loginPass").value);
+    await setPersistence(auth,browserLocalPersistence);
+    const credential=await signInWithEmailAndPassword(auth,`${n.toLowerCase()}@candidate.examportal.local`,password);
+    const signedInUser=credential.user;
     const a=await getDoc(doc(db,"applications",n));
-    if(!a.exists()||a.data().authUid!==auth.currentUser?.uid){await signOut(auth);showMsg($("#loginMsg"),"Application not found or access denied.",true);return}
+    if(!a.exists()||a.data().authUid!==signedInUser.uid){
+      await signOut(auth);
+      showMsg(msg,"Application not found or access denied. / Application नहीं मिला या access denied है।",true);
+      return;
+    }
     sessionStorage.setItem("candidateApp",n);
-    sessionStorage.setItem("candidatePassword",$("#loginPass").value);
+    sessionStorage.setItem("candidatePassword",password);
+    showMsg(msg,"Sign in successful. Opening your application... / Sign In सफल है। Application खोला जा रहा है...");
     location.href="application-dashboard.html";
-  }catch(e){
-    showMsg($("#loginMsg"),"Login failed. Check your Application Number and password.",true);
+  }catch(error){
+    const code=String(error?.code||"");
+    let message="Login failed. Please check your Application Number and password. / Application Number और Password जाँचें।";
+    if(code==="auth/invalid-credential"||code==="auth/wrong-password"||code==="auth/user-not-found"){
+      message="Incorrect Application Number or Password. / Application Number या Password गलत है।";
+    }else if(code==="auth/too-many-requests"){
+      message="Too many attempts. Please wait and try again. / बहुत अधिक प्रयास हुए हैं। थोड़ी देर बाद फिर प्रयास करें।";
+    }else if(code==="auth/operation-not-allowed"){
+      message="Sign In service is not enabled in Firebase. / Firebase में Sign In service enabled नहीं है।";
+    }else if(code==="permission-denied"||String(error?.message||"").toLowerCase().includes("permission")){
+      message="Login succeeded, but application access was denied. / Login सफल हुआ, लेकिन application access denied है।";
+    }
+    console.error("Candidate sign-in failed:",error);
+    showMsg(msg,message,true);
+  }finally{
+    if(submit)submit.disabled=false;
   }
 };
