@@ -29,7 +29,7 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Deploy Firestore security rules
-        run: firebase deploy --project exam-9f830 --only firestore --non-interactive
+        run: firebase deploy --project exam-9f830 --only firestore:rules --non-interactive
 
       - name: Deploy Firebase Hosting
         run: firebase deploy --project exam-9f830 --only hosting --non-interactive
