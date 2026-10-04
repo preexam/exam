@@ -589,18 +589,43 @@ async function candidates(){
           <td>${esc(x.mobile||"")}</td>
           <td>${esc(x.status||"")}</td>
           <td>${esc(toDate(x.createdAt)||"")}</td>
-          <td><button class="btn small" data-view-candidate="${esc(x.id)}">View</button></td>
+          <td><button class="btn small" data-view-candidate="${esc(x.id)}">View</button><button class="btn small danger" data-delete-candidate="${esc(x.id)}">Delete</button></td>
         </tr>
       `)
     );
     $("#candidateTable").querySelectorAll("[data-view-candidate]").forEach(b=>
       b.onclick=()=>viewCandidate(b.dataset.viewCandidate)
     );
+  $("#candidateTable").querySelectorAll("[data-delete-candidate]").forEach(b=>
+    b.onclick=()=>deleteCandidate(b.dataset.deleteCandidate)
+  );
   };
 
   $("#candidateSearch").oninput=render;
   $("#candidateRefresh").onclick=()=>candidates();
   render();
+}
+
+async function deleteCandidate(id){
+  const x=(window.__candidates||[]).find(v=>v.id===id);
+  if(!x){alert("Candidate not found.");return}
+  if(!confirm("Delete this candidate and its unpaid/incomplete application records? This cannot be undone."))return;
+  try{
+    const user=auth.currentUser;
+    if(!user)throw new Error("Admin session expired. Please sign in again.");
+    const token=await user.getIdToken();
+    const response=await fetch("/api/adminDeleteCandidate",{
+      method:"POST",
+      headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+      body:JSON.stringify({candidateId:id,applicationNumber:x.applicationNumber||""})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||"Candidate could not be deleted.");
+    await log("CANDIDATE_DELETED",id,{applicationNumber:x.applicationNumber||"",deletedRecords:data.deletedRecords||{}});
+    candidates();
+  }catch(e){
+    alert(e.message||"Unable to delete candidate.");
+  }
 }
 
 async function viewCandidate(id){
@@ -1773,6 +1798,7 @@ function renderPayments(){
             >
               Verify / Edit
             </button>
+            ${x.status!=="Successful"?`<button class="btn small danger" data-delete-pay="${esc(x.id)}">Delete</button>`:""}
 
           </td>
 
@@ -1785,8 +1811,21 @@ function renderPayments(){
     .forEach(b=>
       b.onclick=()=>editPayment(b.dataset.pay)
     );
+  $("#payTable").querySelectorAll("[data-delete-pay]").forEach(b=>
+    b.onclick=()=>deletePayment(b.dataset.deletePay)
+  );
 }
 
+
+async function deletePayment(id){
+  const x=(window.__payments||[]).find(v=>v.id===id);
+  if(!x){alert("Payment record not found.");return}
+  if(x.status==="Successful"){alert("Successful payment records cannot be deleted from this screen.");return}
+  if(!confirm("Delete this "+(x.status||"pending")+" payment record? This cannot be undone."))return;
+  await deleteDoc(doc(db,"payments",id));
+  await log("PAYMENT_RECORD_DELETED",id,{applicationNumber:x.applicationNumber||"",status:x.status||""});
+  payments();
+}
 
 async function editPayment(id){
 
@@ -2552,6 +2591,7 @@ async function centres(){
             id="allocMsg"
             class="message"
           ></p>
+          <div id="rollSettingsPreview"></div>
 
         </form>
       `
@@ -2683,11 +2723,14 @@ async function centres(){
       rollStart,
       rollWidth,
       defaultCentreId:v.centreId||"",
+      rollApprovedOnly:bool(e.target,"approvedOnly"),
       updatedAt:serverTimestamp()
     });
     await log("ROLL_SETTINGS_SAVED",v.examId,{centreId:v.centreId||"",rollPrefix:v.rollPrefix||"",rollStart,rollWidth});
     showMsg($("#allocMsg"),"Roll settings saved.");
   };
+
+  renderRollSettingsPreview();
 
   $("#allocForm").onsubmit=async e=>{
     e.preventDefault();
@@ -2699,6 +2742,27 @@ async function centres(){
 }
 
 
+function renderRollSettingsPreview(){
+  const host=$("#rollSettingsPreview");
+  if(!host)return;
+  const rows=(examCache||[]).filter(x=>x.rollStart!=null||x.rollWidth!=null||x.rollPrefix||x.defaultCentreId);
+  host.innerHTML=section("Saved Roll / Centre Allocation Settings",table(["Exam","Centre","Roll Prefix","Starting Number","Width","Approved Only","Actions"],rows.length?rows.map(x=>{
+    const centre=window.__centres.find(c=>c.id===x.defaultCentreId);
+    return `<tr><td>\${esc(x.id)}</td><td>\${esc(centre?.name||x.defaultCentreId||"Not set")}</td><td>\${esc(x.rollPrefix||"")}</td><td>\${esc(x.rollStart??"")}</td><td>\${esc(x.rollWidth??"")}</td><td>\${x.rollApprovedOnly!==false?"Yes":"No"}</td><td><button class="btn small" data-edit-roll-setting="\${esc(x.id)}">Edit</button><button class="btn small danger" data-delete-roll-setting="\${esc(x.id)}">Delete</button></td></tr>`;
+  }).join(""):`<tr><td colspan="7">No saved roll settings yet.</td></tr>`));
+  host.querySelectorAll("[data-edit-roll-setting]").forEach(b=>b.onclick=()=>{
+    const x=examCache.find(e=>e.id===b.dataset.editRollSetting);if(!x)return;
+    const form=$("#allocForm");
+    if(form){form.elements.examId.value=x.id;form.elements.centreId.value=x.defaultCentreId||"";form.elements.rollPrefix.value=x.rollPrefix||"";form.elements.rollStart.value=x.rollStart??100001;form.elements.rollWidth.value=x.rollWidth??6;form.elements.approvedOnly.checked=x.rollApprovedOnly!==false;form.scrollIntoView({behavior:"smooth",block:"center"});}
+  });
+  host.querySelectorAll("[data-delete-roll-setting]").forEach(b=>b.onclick=async()=>{
+    const x=examCache.find(e=>e.id===b.dataset.deleteRollSetting);if(!x)return;
+    if(!confirm("Delete saved roll settings for "+x.id+"? The exam itself will not be deleted."))return;
+    await updateDoc(doc(db,"exams",x.id),{rollPrefix:"",rollStart:null,rollWidth:null,defaultCentreId:"",rollApprovedOnly:false,updatedAt:serverTimestamp()});
+    await log("ROLL_SETTINGS_DELETED",x.id);
+    centres();
+  });
+}
 async function deleteCentre(id){
   const s=await getDocs(query(collection(db,"admitCards"),where("centreId","==",id),limit(1)));
   if(!s.empty){alert("This centre has linked admit cards. Mark it inactive instead.");return;}
