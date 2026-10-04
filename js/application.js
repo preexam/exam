@@ -51,8 +51,8 @@ $("#loginForm").onsubmit=async e=>{
   const n=$("#loginApp").value.trim().toUpperCase();
   const password=$("#loginPass").value;
   const msg=$("#loginMsg");
-  if(!n){showMsg(msg,"Please enter your Application Number / अपना Application Number दर्ज करें।",true);return}
-  if(!password){showMsg(msg,"Please enter your password / अपना Password दर्ज करें।",true);return}
+  if(!n){showMsg(msg,"Please enter your Application Number.",true);return}
+  if(!password){showMsg(msg,"Please enter your password.",true);return}
   const submit=e.submitter;
   if(submit)submit.disabled=true;
   try{
@@ -62,24 +62,24 @@ $("#loginForm").onsubmit=async e=>{
     const a=await getDoc(doc(db,"applications",n));
     if(!a.exists()||a.data().authUid!==signedInUser.uid){
       await signOut(auth);
-      showMsg(msg,"Application not found or access denied. / Application नहीं मिला या access denied है।",true);
+      showMsg(msg,"Application not found or access denied.",true);
       return;
     }
     sessionStorage.setItem("candidateApp",n);
     sessionStorage.setItem("candidatePassword",password);
-    showMsg(msg,"Sign in successful. Opening your application... / Sign In सफल है। Application खोला जा रहा है...");
+    showMsg(msg,"Sign in successful. Opening your application...");
     location.href="application-dashboard.html";
   }catch(error){
     const code=String(error?.code||"");
-    let message="Login failed. Please check your Application Number and password. / Application Number और Password जाँचें।";
+    let message="Login failed. Please check your Application Number and password.";
     if(code==="auth/invalid-credential"||code==="auth/wrong-password"||code==="auth/user-not-found"){
-      message="Incorrect Application Number or Password. / Application Number या Password गलत है।";
+      message="Incorrect Application Number or Password.";
     }else if(code==="auth/too-many-requests"){
-      message="Too many attempts. Please wait and try again. / बहुत अधिक प्रयास हुए हैं। थोड़ी देर बाद फिर प्रयास करें।";
+      message="Too many attempts. Please wait and try again.";
     }else if(code==="auth/operation-not-allowed"){
-      message="Sign In service is not enabled in Firebase. / Firebase में Sign In service enabled नहीं है।";
+      message="Sign In service is not enabled in Firebase.";
     }else if(code==="permission-denied"||String(error?.message||"").toLowerCase().includes("permission")){
-      message="Login succeeded, but application access was denied. / Login सफल हुआ, लेकिन application access denied है।";
+      message="Login succeeded, but application access was denied.";
     }
     console.error("Candidate sign-in failed:",error);
     showMsg(msg,message,true);
