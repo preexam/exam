@@ -65,7 +65,7 @@ service cloud.firestore {
     }
     match /applications/{id} {
       allow create: if ownerCreate(id);
-      allow read: if permission('applications') || owner(id);
+      allow read: if permission('applications') || (signedIn() && resource.data.authUid == request.auth.uid);
       allow update: if permission('applications') || (
         owner(id)
         && resource.data.status != 'Final Submitted'
