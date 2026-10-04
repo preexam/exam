@@ -130,7 +130,7 @@ function select(label,name,opts,value="",extra=""){
   return `
     <label>
       ${label}
-      <select name="${name}" ${extra}>
+      <select id="${name}" name="${name}" ${extra}>
         ${opts.map(o=>`
           <option
             value="${esc(o)}"
