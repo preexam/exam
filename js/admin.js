@@ -1603,28 +1603,32 @@ async function changeAppStatus(id){
 
 
 async function verifyApplication(id){
-
   const app=window.__apps.find(x=>x.id===id);
   if(!app){alert("Application not found.");return}
-  if(!["Final Submitted","Under Verification"].includes(app.status)){
-    alert("Only a submitted application can be approved.");
-    return;
+  if(!["Final Submitted","Under Verification"].includes(app.status)){alert("Only a submitted application can be approved.");return}
+  if(app.paymentStatus!=="Successful"){alert("Payment must be successful before approval.");return}
+  if(!confirm("Mark application as Approved and generate its admit-card draft automatically?"))return;
+  try{
+    await updateDoc(doc(db,"applications",id),{status:"Approved",verifiedBy:me.uid,verifiedAt:serverTimestamp(),updatedAt:serverTimestamp()});
+    await log("APPLICATION_APPROVED",id);
+    const user=auth.currentUser;
+    if(!user)throw new Error("Admin session expired. Please sign in again.");
+    const token=await user.getIdToken();
+    const response=await fetch("https://exam-henna-two.vercel.app/api/autoCreateAdmitDraft",{
+      method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+      body:JSON.stringify({applicationNumber:id,adminMode:true})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||"Application approved, but admit-card draft could not be generated.");
+    await log("ADMIT_DRAFT_AUTO_GENERATED",id,{rollNumber:data.rollNumber||"",created:data.created===true});
+    alert(data.created===true?"Application approved and admit-card draft generated. Admin only needs to publish it.":"Application approved. An admit-card draft already exists or automatic generation was not required.");
+  }catch(err){
+    console.error("APPROVAL / AUTO ADMIT ERROR:",err);
+    alert(err?.message||"Unable to complete approval.");
   }
-  if(app.paymentStatus!=="Successful"){
-    alert("Payment must be successful before approval.");
-    return;
-  }
-  const ok=confirm("Mark application as Approved?");
-  if(!ok)return;
-  await updateDoc(doc(db,"applications",id),{
-    status:"Approved",
-    verifiedBy:me.uid,
-    verifiedAt:serverTimestamp(),
-    updatedAt:serverTimestamp()
-  });
-  await log("APPLICATION_APPROVED",id);
-  alert("Application approved.");
+  applications();
 }
+
 
 
 function exportApps(){
@@ -2806,8 +2810,8 @@ async function deleteCentre(id){
 }
 
 async function allocateAdmitDrafts(v,form){
-
-  const snap=await getDocs(
+  try{
+    const snap=await getDocs(
     query(
       collection(db,"applications"),
       orderBy("createdAt","asc"),
@@ -2966,10 +2970,14 @@ async function allocateAdmitDrafts(v,form){
     }
   );
 
-  showMsg(
-    $("#allocMsg"),
-    `${count} admit-card drafts generated.`
-  );
+    showMsg(
+      $("#allocMsg"),
+      `${count} admit-card drafts generated.`
+    );
+  }catch(err){
+    console.error("ALLOCATE_ADMIT_DRAFTS_ERROR:",err);
+    showMsg($("#allocMsg"),err?.message||"Unable to generate admit-card drafts. Your admin login has not been changed.",true);
+  }
 }
 
 
