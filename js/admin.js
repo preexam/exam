@@ -2788,10 +2788,11 @@ function renderRollSettingsPreview(){
   const host=$("#rollSettingsPreview");
   if(!host)return;
   const rows=(examCache||[]).filter(x=>x.rollStart!=null||x.rollWidth!=null||x.rollPrefix||x.defaultCentreId);
-  host.innerHTML=section("Saved Roll / Centre Allocation Settings",table(["Exam","Centre","Roll Prefix","Starting Number","Width","Approved Only","Actions"],rows.length?rows.map(x=>{
+  const previewRows=rows.map(x=>{
     const centre=window.__centres.find(c=>c.id===x.defaultCentreId);
     return `<tr><td>${esc(x.id)}</td><td>${esc(centre?.name||x.defaultCentreId||"Not set")}</td><td>${esc(x.rollPrefix||"")}</td><td>${esc(x.rollStart??"")}</td><td>${esc(x.rollWidth??"")}</td><td>${x.rollApprovedOnly!==false?"Yes":"No"}</td><td><button class="btn small" data-edit-roll-setting="${esc(x.id)}">Edit</button><button class="btn small danger" data-delete-roll-setting="${esc(x.id)}">Delete</button></td></tr>`;
-  }).join(""):`<tr><td colspan="7">No saved roll settings yet.</td></tr>`));
+  });
+  host.innerHTML=section("Saved Roll / Centre Allocation Settings",table(["Exam","Centre","Roll Prefix","Starting Number","Width","Approved Only","Actions"],previewRows));
   host.querySelectorAll("[data-edit-roll-setting]").forEach(b=>b.onclick=()=>{
     const x=examCache.find(e=>e.id===b.dataset.editRollSetting);if(!x)return;
     const form=$("#allocForm");
