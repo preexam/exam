@@ -444,9 +444,17 @@ function printApplication(){
   const rows=sections.map(([title,items])=>{const body=items.map(([label,value])=>"<tr><th>"+escapeHtml(label)+"</th><td>"+escapeHtml(printableValue(value))+"</td></tr>").join("");return "<section><h2>"+escapeHtml(title)+"</h2><table>"+body+"</table></section>"}).join("");
   const credential="<section class=\"credentials\"><h2>Candidate Login Details</h2><table><tr><th>Application Number</th><td>"+escapeHtml(appNo)+"</td></tr><tr><th>Password</th><td>"+escapeHtml(password||"Use the password created during registration")+"</td></tr></table><p>Keep your Application Number and Password safe. They are required for future login and Admit Card / Result download.</p></section>";
   const html="<!doctype html><html><head><meta charset=\"utf-8\"><title>Application "+escapeHtml(appNo)+"</title><style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#172033;margin:0;background:#fff}.sheet{max-width:900px;margin:0 auto;padding:30px}.head{display:flex;justify-content:space-between;gap:20px;border-bottom:3px solid #ff7a00;padding-bottom:16px;margin-bottom:22px}.brand{font-size:22px;font-weight:900;color:#0e376d}.meta{text-align:right;font-size:12px;color:#667085}.meta b{color:#172033}h1{font-size:24px;margin:0 0 5px}.subtitle{font-size:12px;color:#667085;margin:0}section{margin:0 0 22px;border:1px solid #dfe5ee;border-radius:10px;overflow:hidden;break-inside:avoid}h2{font-size:15px;margin:0;padding:11px 14px;background:#f5f8fc;color:#0e376d;border-bottom:1px solid #dfe5ee}table{width:100%;border-collapse:collapse}th,td{padding:8px 11px;border-bottom:1px solid #edf1f5;font-size:11px;text-align:left;vertical-align:top}th{width:36%;color:#526075;background:#fbfcfe;font-weight:700}tr:last-child th,tr:last-child td{border-bottom:0}.credentials{border:2px solid #0e376d}.credentials h2{background:#0e376d;color:#fff}.credentials p{font-size:11px;margin:0;padding:10px 12px;color:#526075}.print-btn{margin-bottom:20px}.footer{margin-top:25px;font-size:10px;color:#667085;text-align:center}@media print{.print-btn{display:none}.sheet{padding:0}.footer{margin-top:10px}}</style></head><body><div class=\"sheet\"><button class=\"print-btn\" onclick=\"window.print()\">Print / Save PDF</button><div class=\"head\"><div><div class=\"brand\">BOOKESH EXAM PORTAL</div><h1>Application Form</h1><p class=\"subtitle\">Final Submitted Application</p></div><div class=\"meta\"><div>Application No.</div><b>"+escapeHtml(appNo)+"</b><div style=\"margin-top:6px\">Status</div><b>"+escapeHtml(a.status||"Final Submitted")+"</b></div></div>"+credential+rows+"<div class=\"footer\">Please verify all details and keep this application record safely for future reference.</div></div></body></html>";
-  const w=window.open("","_blank","noopener,noreferrer");
-  if(!w){showMsg($("#msg"),"Please allow pop-ups for Print / Save Application.",true);return;}
-  w.document.write(html);w.document.close();setTimeout(()=>w.focus(),100);
+  const printableHtml=html.replace("</body></html>","<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),250));</script></body></html>");
+  const blobUrl=URL.createObjectURL(new Blob([printableHtml],{type:"text/html;charset=utf-8"}));
+  const link=document.createElement("a");
+  link.href=blobUrl;
+  link.target="_blank";
+  link.rel="noopener";
+  link.style.display="none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(blobUrl),60000);
 }
 document.querySelector("#print").onclick=printApplication;
 document.querySelector("#logout").onclick=async()=>{await signOut(auth);sessionStorage.clear();location.href="application.html"};
