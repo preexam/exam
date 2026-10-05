@@ -2769,10 +2769,17 @@ async function centres(){
 
   $("#allocForm").onsubmit=async e=>{
     e.preventDefault();
-    await allocateAdmitDrafts(
-      formObj(e.target),
-      e.target
-    );
+    const form=e.target;
+    try{
+      await allocateAdmitDrafts(formObj(form),form);
+    }catch(err){
+      console.error("CENTRE_ROLL_ALLOCATION_ERROR:",err);
+      showMsg(
+        $("#allocMsg"),
+        "Unable to generate admit-card drafts. Your admin login has not been changed. Please try again.",
+        true
+      );
+    }
   };
 }
 
