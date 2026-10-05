@@ -2,12 +2,6 @@ const { db, admin, safeEqualHex, webhookSignature, markPaymentSuccessful } = req
 
 // Razorpay signs the exact raw request body. Vercel's Node runtime must not
 // parse the body before this handler reads it.
-module.exports.config = {
-  api: {
-    bodyParser: false
-  }
-};
-
 function readRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -100,5 +94,12 @@ module.exports = async function handler(req, res) {
     console.error("razorpayWebhook", error);
     res.statusCode = 500;
     res.end("Webhook processing failed");
+  }
+};
+
+// Preserve the raw request body so Razorpay signature verification is exact.
+module.exports.config = {
+  api: {
+    bodyParser: false
   }
 };
