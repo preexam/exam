@@ -56,8 +56,8 @@ service cloud.firestore {
       allow read: if superAdmin() || (signedIn() && request.auth.uid == uid);
       allow create, update, delete: if superAdmin();
     }
-    match /settings/{id} { allow read: if true; allow write: if permission('settings'); }
-    match /exams/{id} { allow read: if true; allow write: if permission('exams'); }
+    match /settings/{id} { allow read: if signedIn(); allow write: if permission('settings'); }
+    match /exams/{id} { allow read: if signedIn(); allow write: if permission('exams'); }
     match /candidates/{uid} {
       allow create: if signedIn() && request.auth.uid == uid;
       allow read, update: if (signedIn() && request.auth.uid == uid) || permission('applications');
