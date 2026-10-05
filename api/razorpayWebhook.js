@@ -1,31 +1,60 @@
-const { db, admin, requiredEnv, safeEqualHex, webhookSignature, markPaymentSuccessful } = require("./_lib/razorpay");
+const { db, admin, safeEqualHex, webhookSignature, markPaymentSuccessful } = require("./_lib/razorpay");
 
-export default async function handler(request) {
-  if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
+// Razorpay signs the exact raw request body. Vercel's Node runtime must not
+// parse the body before this handler reads it.
+module.exports.config = {
+  api: {
+    bodyParser: false
+  }
+};
 
-  const rawBody = await request.text();
-  const signature = request.headers.get("x-razorpay-signature") || "";
-  if (!safeEqualHex(webhookSignature(rawBody), signature)) {
-    return new Response("Invalid signature", { status: 401 });
+function readRawBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", chunk => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
+module.exports = async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.statusCode = 405;
+    res.end("Method Not Allowed");
+    return;
   }
 
-  let event;
   try {
-    event = JSON.parse(rawBody);
-  } catch {
-    return new Response("Invalid JSON", { status: 400 });
-  }
+    const rawBody = await readRawBody(req);
+    const signature = String(req.headers?.["x-razorpay-signature"] || "");
 
-  const eventId = request.headers.get("x-razorpay-event-id") || "";
-  const eventRef = eventId ? db.doc("razorpayWebhookEvents/" + eventId) : null;
-  if (eventRef) {
-    const existing = await eventRef.get();
-    if (existing.exists && existing.data()?.status === "Processed") {
-      return new Response("OK", { status: 200 });
+    if (!safeEqualHex(webhookSignature(rawBody), signature)) {
+      res.statusCode = 401;
+      res.end("Invalid signature");
+      return;
     }
-  }
 
-  try {
+    let event;
+    try {
+      event = JSON.parse(rawBody);
+    } catch {
+      res.statusCode = 400;
+      res.end("Invalid JSON");
+      return;
+    }
+
+    const eventId = String(req.headers?.["x-razorpay-event-id"] || "");
+    const eventRef = eventId ? db.doc("razorpayWebhookEvents/" + eventId) : null;
+
+    if (eventRef) {
+      const existing = await eventRef.get();
+      if (existing.exists && existing.data()?.status === "Processed") {
+        res.statusCode = 200;
+        res.end("OK");
+        return;
+      }
+    }
+
     const entity = event?.payload?.payment?.entity;
     const orderId = entity?.order_id;
 
@@ -64,9 +93,12 @@ export default async function handler(request) {
         status: "Processed"
       }, { merge: true });
     }
-    return new Response("OK", { status: 200 });
+
+    res.statusCode = 200;
+    res.end("OK");
   } catch (error) {
     console.error("razorpayWebhook", error);
-    return new Response("Webhook processing failed", { status: 500 });
+    res.statusCode = 500;
+    res.end("Webhook processing failed");
   }
-}
+};
