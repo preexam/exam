@@ -628,16 +628,44 @@ async function deleteCandidate(id){
   }
 }
 
+function renderApplicationDetailSections(x){
+  const sections=[
+    ["Personal Details",x.personal||{}],
+    ["Address Details",x.address||{}],
+    ["Education Details",x.education||{}],
+    ["Category Details",x.category||{}],
+    ["Other Details",x.other||{}],
+    ["Documents",x.documents||{}],
+    ["Declaration & Status",{declarationAccepted:x.declarationAccepted?"Yes":"No",status:x.status||"",paymentStatus:x.paymentStatus||"",applicationNumber:x.applicationNumber||"",createdAt:toDate(x.createdAt),finalSubmittedAt:toDate(x.finalSubmittedAt)}],
+    ["Payment Details",{paymentStatus:x.paymentStatus||"",paymentOrderId:x.paymentOrderId||"",paymentId:x.paymentId||"",paymentOrderAmount:x.paymentOrderAmount?("₹"+(Number(x.paymentOrderAmount)/100).toFixed(2)):"",paymentVerifiedAt:toDate(x.paymentVerifiedAt)}]
+  ];
+  if(x.other?.customFields&&Object.keys(x.other.customFields).length)sections.push(["Additional / Custom Details",x.other.customFields]);
+  return sections.map(([title,data])=>{
+    const entries=Object.entries(data||{}).filter(([k,v])=>v!==undefined&&v!==null&&v!=="");
+    return '<section class="card"><h3>'+esc(title)+'</h3>'+
+      (entries.length?'<div class="form-grid">'+entries.map(([k,v])=>{
+        const isUrl=typeof v==="string"&&/^https?:\/\//i.test(v);
+        return '<div><b>'+esc(k)+'</b><div class="muted" style="margin-top:4px;word-break:break-word">'+(isUrl?'<a href="'+esc(v)+'" target="_blank" rel="noopener">Open / View</a>':esc(Array.isArray(v)?v.join(", "):typeof v==="object"?JSON.stringify(v,null,2):v))+'</div></div>';
+      }).join("")+'</div>':'<p class="muted">No data available.</p>')+
+      '</section>';
+  }).join("");
+}
+
 async function viewCandidate(id){
   const s=await getDoc(doc(db,"candidates",id));
   if(!s.exists()){alert("Candidate not found.");return;}
-  const x={id:s.id,...s.data()};
+  const candidate={id:s.id,...s.data()};
+  const appSnap=candidate.applicationNumber?await getDoc(doc(db,"applications",candidate.applicationNumber)):null;
+  const app=appSnap?.exists()?{applicationNumber:appSnap.id,...appSnap.data()}:null;
+  const admitSnap=app?await getDoc(doc(db,"admitCards",app.applicationNumber)):null;
+  const admit=admitSnap?.exists()?admitSnap.data():null;
   panel.innerHTML=`
-    <div class="actions no-print"><button class="btn" id="backCandidates">Back</button><button class="btn" id="printCandidate">Print</button>${x.applicationNumber?'<button class="btn primary" id="candidateDocuments">Verify Documents</button>':""}</div>
-    <h2>Candidate: ${esc(x.name||x.applicationNumber||id)}</h2>
-    <div class="grid-3"><div class="card"><b>Application</b><p>${esc(x.applicationNumber||"")}</p></div><div class="card"><b>Mobile</b><p>${esc(x.mobile||"")}</p></div><div class="card"><b>Status</b><p>${esc(x.status||"")}</p></div></div>
-    <section class="card"><h3>Candidate Status</h3><div class="toolbar"><select id="candidateStatus">${["Registered","Active","Suspended","Locked"].map(st=>`<option ${x.status===st?"selected":""}>${st}</option>`).join("")}</select><button class="btn primary" id="saveCandidateStatus">Save Candidate Status</button></div><p id="candidateMsg" class="message"></p></section>
-    ${Object.entries(x).filter(([k])=>k!=="id").map(([k,v])=>`<div class="card"><b>${esc(k)}</b><pre style="white-space:pre-wrap">${esc(typeof v==="object"?JSON.stringify(v,null,2):v)}</pre></div>`).join("")}
+    <div class="actions no-print"><button class="btn" id="backCandidates">Back</button><button class="btn" id="printCandidate">Print</button>${candidate.applicationNumber?'<button class="btn primary" id="candidateDocuments">Verify Documents</button>':""}</div>
+    <h2>Student Details — ${esc(candidate.name||candidate.applicationNumber||id)}</h2>
+    <div class="grid-3"><div class="card"><b>Application Number</b><p>${esc(candidate.applicationNumber||"")}</p></div><div class="card"><b>Mobile</b><p>${esc(candidate.mobile||"")}</p></div><div class="card"><b>Candidate Status</b><p>${esc(candidate.status||"")}</p></div></div>
+    <section class="card"><h3>Candidate Status</h3><div class="toolbar"><select id="candidateStatus">${["Registered","Active","Suspended","Locked"].map(st=>`<option ${candidate.status===st?"selected":""}>${st}</option>`).join("")}</select><button class="btn primary" id="saveCandidateStatus">Save Candidate Status</button></div><p id="candidateMsg" class="message"></p></section>
+    ${app?renderApplicationDetailSections(app):'<section class="card"><p class="muted">No application record is linked to this candidate.</p></section>'}
+    ${admit?'<section class="card"><h3>Admit Card / Centre & Roll</h3><div class="form-grid">'+Object.entries(admit).filter(([k,v])=>v!==undefined&&v!==null&&v!=="").map(([k,v])=>'<div><b>'+esc(k)+'</b><div class="muted" style="margin-top:4px">'+esc(typeof v==="object"?JSON.stringify(v,null,2):v)+'</div></div>').join("")+'</div></section>':""}
   `;
   $("#backCandidates").onclick=()=>loadTab("candidates");
   $("#printCandidate").onclick=()=>window.print();
@@ -648,8 +676,9 @@ async function viewCandidate(id){
     showMsg($("#candidateMsg"),"Candidate status saved.");
     candidates();
   };
-  if(x.applicationNumber)$("#candidateDocuments").onclick=()=>verifyCandidateDocuments(x.applicationNumber);
+  if(candidate.applicationNumber)$("#candidateDocuments").onclick=()=>verifyCandidateDocuments(candidate.applicationNumber);
 }
+
 
 async function verifyCandidateDocuments(applicationNumber){
   const s=await getDoc(doc(db,"applications",applicationNumber));
@@ -837,7 +866,7 @@ async function exams(){
       )}
 
       ${field(
-        "Admit Release Date",
+        "Admit Card Release Date & Time",
         "admitRelease",
         "datetime-local"
       )}
@@ -1529,64 +1558,19 @@ function renderApps(){
 
 
 async function viewApplication(id){
-
-  const s=await getDoc(
-    doc(db,"applications",id)
-  );
-
-  if(!s.exists()){
-    alert("Not found");
-    return;
-  }
-
-  const x=s.data();
-
+  const s=await getDoc(doc(db,"applications",id));
+  if(!s.exists()){alert("Not found");return;}
+  const x={applicationNumber:s.id,...s.data()};
+  const admitSnap=await getDoc(doc(db,"admitCards",id));
+  const admit=admitSnap.exists()?admitSnap.data():null;
   panel.innerHTML=`
-
-    <div class="actions no-print">
-
-      <button
-        class="btn"
-        onclick="loadTab('applications')"
-      >
-        Back
-      </button>
-
-      <button
-        class="btn"
-        onclick="window.print()"
-      >
-        Print
-      </button>
-
-    </div>
-
-    <h2>
-      Application: ${esc(id)}
-    </h2>
-
-    ${
-      Object.entries(x)
-        .map(([k,v])=>`
-          <div class="card">
-
-            <b>${esc(k)}</b>
-
-            <pre style="white-space:pre-wrap">
-${esc(
-  typeof v==="object"
-    ?JSON.stringify(v,null,2)
-    :v
-)}
-            </pre>
-
-          </div>
-        `)
-        .join("")
-    }
+    <div class="actions no-print"><button class="btn" id="backApplications">Back</button><button class="btn" id="printApplicationView">Print</button></div>
+    <h2>Student Application Details — ${esc(id)}</h2>
+    ${renderApplicationDetailSections(x)}
+    ${admit?'<section class="card"><h3>Admit Card / Centre & Roll</h3><div class="form-grid">'+Object.entries(admit).filter(([k,v])=>v!==undefined&&v!==null&&v!=="").map(([k,v])=>'<div><b>'+esc(k)+'</b><div class="muted" style="margin-top:4px">'+esc(typeof v==="object"?JSON.stringify(v,null,2):v)+'</div></div>').join("")+'</div></section>':'<section class="card"><h3>Admit Card / Centre & Roll</h3><p class="muted">No admit-card draft has been generated yet.</p></section>'}
   `;
-
-  window.loadTab=loadTab;
+  $("#backApplications").onclick=()=>loadTab("applications");
+  $("#printApplicationView").onclick=()=>window.print();
 }
 
 
