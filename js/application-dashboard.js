@@ -12,11 +12,11 @@ function educationDropdown(label,name,options,value){
   const optionButtons=options.map(x=>`<button type="button" class="education-dropdown-option" data-education-value="${escapeHtml(x)}" ${locked?"disabled":""}>${escapeHtml(x)}</button>`).join("");
   return `<div class="education-dropdown-wrap"><label>${escapeHtml(label)}</label><details class="education-dropdown" data-education-dropdown="${escapeHtml(name)}"><summary><span data-education-label="${escapeHtml(name)}">${escapeHtml(current||`Select ${label}`)}</span></summary><div class="education-dropdown-menu">${optionButtons}</div></details><input class="education-dropdown-value" type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(current)}"></div>`;
 }
-function qualificationSubjectField(value){
+function qualificationSubjectField(value,languageValues=selectedLanguage1,advancedValue=a.education?.advancedSubject){
   const trackKey=qualificationTrackKey(value);
-  const langChecks=language1Options.map(x=>`<label class="language-choice"><input type="checkbox" name="language1Choice" value="${escapeHtml(x)}" ${selectedLanguage1.includes(x)?"checked":""} ${locked?"disabled":""}><span>${escapeHtml(x)}</span></label>`).join("");
+  const langChecks=language1Options.map(x=>`<label class="language-choice"><input type="checkbox" name="language1Choice" value="${escapeHtml(x)}" ${languageValues.includes(x)?"checked":""} ${locked?"disabled":""}><span>${escapeHtml(x)}</span></label>`).join("");
   const extra=trackKey==="6to8"
-    ? `<div class="education-choice-card"><label>Optional Subject / Subject Group</label>${educationDropdown("Optional Subject","advancedSubject",["Mathematics & Science","Social Studies"],a.education?.advancedSubject)}</div>`
+    ? `<div class="education-choice-card"><label>Optional Subject / Subject Group</label>${educationDropdown("Optional Subject","advancedSubject",["Mathematics & Science","Social Studies"],advancedValue)}</div>`
     : "";
   return `<div class="education-choice-grid">
     <div class="education-choice-card"><label>Language 1 <span class="muted">(Select any 2)</span></label><div class="language-dropdown"><details><summary>Select any 2 languages</summary><div class="language-options">${langChecks}</div></details></div></div>
@@ -134,22 +134,6 @@ document.querySelector("#payNow")?.addEventListener("click",startPayment);
 function bindEducationControls(){
   const examWrap=document.querySelector("#applyingForWrap");
   const examInput=examWrap?.querySelector('input[name="examPost"]');
-  examWrap?.querySelectorAll(".education-dropdown-option").forEach(button=>{
-    button.addEventListener("click",()=>{
-      const value=button.dataset.educationValue||"";
-      if(examInput)examInput.value=value;
-      const label=examWrap.querySelector("[data-education-label='examPost']");
-      if(label)label.textContent=value||"Select Applying For";
-      const details=examWrap.querySelector("details");
-      if(details)details.open=false;
-      const wrap=document.querySelector("#qualificationSubjectWrap");
-      if(wrap){
-        wrap.innerHTML=qualificationSubjectField(value);
-        bindLanguageChoices(wrap);
-        bindEducationDropdowns(wrap);
-      }
-    });
-  });
   bindEducationDropdowns(examWrap);
   bindLanguageChoices(document.querySelector("#qualificationSubjectWrap"));
 }
