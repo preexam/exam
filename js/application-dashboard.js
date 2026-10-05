@@ -274,6 +274,13 @@ async function save(final=false,stepSave=false){
     if(finalButton){finalButton.disabled=true;finalButton.textContent="Application Submitted ✓";finalButton.classList.add("submitted");}
     const header=document.querySelector("#dash>.card:first-child");
     if(header){const statusLine=Array.from(header.querySelectorAll("p")).find(p=>p.textContent.includes("Status:"));if(statusLine)statusLine.innerHTML="Status: <b>Final Submitted</b>";}
+    try{
+      if(exam?.autoAdmitDraft===true){
+        await paymentApi("/api/autoCreateAdmitDraft",{applicationNumber:appNo});
+      }
+    }catch(e){
+      console.warn("AUTO_ADMIT_DRAFT",e);
+    }
     showSubmissionSuccess();
     showMsg($("#msg"),"Application submitted successfully.");
   }else{
@@ -421,7 +428,16 @@ function printApplication(){
     ["Other Details",[["Employment Status",a.other?.employment],["Government Employee",a.other?.governmentEmployee],["Employer / Organization",a.other?.employer],["Designation",a.other?.designation],["Employee ID",a.other?.employeeId],["Joining Date",a.other?.joiningDate],["NOC Required",a.other?.nocRequired],["Experience",a.other?.experience],["Identification / Visible Mark",a.other?.visibleMark]]],
     ["Documents & Uploads",[["Photograph",a.photoUrl?"Uploaded":"Not uploaded"],["Signature",a.signatureUrl?"Uploaded":"Not uploaded"],["Thumb Impression",a.thumbUrl?"Uploaded":"Not uploaded"],["Reservation Certificate",a.documents?.certificateUrl?"Uploaded":"Not uploaded"],["NOC Document",a.documents?.nocUrl?"Uploaded":"Not uploaded"],["Other Document",a.documents?.otherDocumentUrl?"Uploaded":"Not uploaded"]]],
     ["Declaration",[["Declaration Accepted",a.declarationAccepted?"Yes":"No"]]],
-    ["Payment",[["Payment Status",a.paymentStatus],["Payment Amount",a.paymentOrderAmount?("₹"+(Number(a.paymentOrderAmount)/100).toFixed(2)):"—"],["Application Status",a.status],["Application Number",appNo]]]
+    ["Payment",[["Payment Status",a.paymentStatus],["Payment Amount",a.paymentOrderAmount?("₹"+(Number(a.paymentOrderAmount)/100).toFixed(2)):"—"],["Application Status",a.status],["Application Number",appNo]]],
+    ["Examination & Admit Card Schedule",[
+      ["Admit Card Release Date & Time",exam?.admitRelease||"Not scheduled"],
+      ["Exam Date",exam?.examDate||"Not scheduled"],
+      ["Reporting Time",exam?.reportingTime||"—"],
+      ["Gate Closing Time",exam?.gateClosingTime||"—"],
+      ["Exam Time",exam?.examTime||"—"],
+      ["Centre","To be updated after centre allocation"],
+      ["Roll Number","To be updated after roll allocation"]
+    ]]
   ];
   const customEntries=Object.entries(a.other?.customFields||{});
   if(customEntries.length)sections.splice(5,0,["Additional / Custom Details",customEntries.map(([id,value])=>{const field=customFields.find(x=>x.id===id);return [field?.name||id,value]})]);
