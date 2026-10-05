@@ -24,12 +24,24 @@ module.exports = async function handler(req, res) {
     if (!token) return json(res, { error: "Authentication required." }, 401, req);
 
     const user = await auth.verifyIdToken(token);
+    const adminMode = body?.adminMode === true;
+    let adminProfile = null;
+    if(adminMode){
+      const adminSnap = await db.doc("admins/" + user.uid).get();
+      if(!adminSnap.exists || adminSnap.data().active !== true){
+        return json(res, { error: "Admin access denied." }, 403, req);
+      }
+      adminProfile = adminSnap.data();
+    }
     const applicationNumber = String(body?.applicationNumber || "").trim().toUpperCase();
     if (!applicationNumber) return json(res, { error: "Application number is required." }, 400, req);
 
     const appRef = db.doc("applications/" + applicationNumber);
     const appSnap = await appRef.get();
-    if (!appSnap.exists || appSnap.data().authUid !== user.uid) {
+    if (!appSnap.exists) {
+      return json(res, { error: "Application not found." }, 404, req);
+    }
+    if (!adminMode && appSnap.data().authUid !== user.uid) {
       return json(res, { error: "Application access denied." }, 403, req);
     }
 
