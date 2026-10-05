@@ -41,5 +41,5 @@ export function examLifecycle(exam,now=new Date()){
 }
 export async function isAdminUser(uid){if(!uid)return null;const s=await getDoc(doc(db,"admins",uid));return s.exists()?s.data():null;}
 export function csvCell(v){const s=String(v??"");return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;}
-export function downloadText(filename,text,type="text/plain"){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+export function downloadText(filename,text,type="text/plain"){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;a.style.display="none";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);}
 export function toDate(v){if(!v)return "";if(v?.toDate)return v.toDate().toLocaleString();const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString();}
