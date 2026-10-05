@@ -156,6 +156,8 @@ service cloud.firestore {
     }
 
     match /centres/{id} { allow read: if true; allow write: if permission('centres'); }
+    match /centreAllocations/{id} { allow read, write: if permission('centres'); }
+    match /counters/{id} { allow read, write: if permission('centres') || permission('admit'); }
     match /customFields/{id} { allow read: if signedIn(); allow write: if permission('formBuilder'); }
     match /documents/{id} { allow read: if signedIn(); allow write: if permission('documents'); }
     match /notices/{id} { allow read: if true; allow write: if permission('notices'); }
