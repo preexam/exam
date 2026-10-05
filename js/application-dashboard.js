@@ -134,7 +134,27 @@ document.querySelector("#payNow")?.addEventListener("click",startPayment);
 function bindEducationControls(){
   const examWrap=document.querySelector("#applyingForWrap");
   const examInput=examWrap?.querySelector('input[name="examPost"]');
-  bindEducationDropdowns(examWrap);
+  const examButtons=examWrap?.querySelectorAll(".education-dropdown-option")||[];
+  examButtons.forEach(button=>{
+    if(button.dataset.bound==="1")return;
+    button.dataset.bound="1";
+    button.addEventListener("click",()=>{
+      const value=button.dataset.educationValue||"";
+      const currentLanguages=Array.from(document.querySelectorAll('input[name="language1Choice"]:checked')).map(el=>el.value);
+      const currentAdvanced=document.querySelector('input[name="advancedSubject"]')?.value||a.education?.advancedSubject||"";
+      if(examInput)examInput.value=value;
+      const label=examWrap.querySelector("[data-education-label='examPost']");
+      if(label)label.textContent=value||"Select Applying For";
+      const details=examWrap.querySelector("details");
+      if(details)details.open=false;
+      const wrap=document.querySelector("#qualificationSubjectWrap");
+      if(wrap){
+        wrap.innerHTML=qualificationSubjectField(value,currentLanguages,currentAdvanced);
+        bindLanguageChoices(wrap);
+        bindEducationDropdowns(wrap);
+      }
+    });
+  });
   bindLanguageChoices(document.querySelector("#qualificationSubjectWrap"));
 }
 function bindEducationDropdowns(scope=document){
