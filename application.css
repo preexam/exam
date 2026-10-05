@@ -252,3 +252,30 @@ body.submission-modal-open{overflow:hidden}
 .submission-actions{display:flex;justify-content:center;gap:10px;margin-top:20px}.submission-actions .btn{min-width:180px}
 body:has(#appForm) .actions .btn.submitted{background:#059669!important;color:#fff;opacity:1;cursor:not-allowed}
 @media(max-width:600px){.submission-modal{padding:12px}.submission-modal-dialog{padding:23px 17px;border-radius:18px}.credential-grid{grid-template-columns:1fr}.submission-actions{flex-direction:column}.submission-actions .btn{width:100%}}
+
+
+/* Education slide-down controls */
+body:has(.application-form) .education-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:15px}
+body:has(.application-form) .education-choice-card,
+body:has(.application-form) .education-dropdown-wrap{min-width:0}
+body:has(.application-form) .education-dropdown-wrap>label,
+body:has(.application-form) .education-choice-card>label{display:block}
+.education-dropdown{position:relative;margin-top:6px}
+.education-dropdown summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 13px;border:1px solid #d0d5dd;border-radius:11px;background:#fcfdff;color:#344054;font-size:13px;font-weight:650}
+.education-dropdown summary::-webkit-details-marker{display:none}
+.education-dropdown summary:after{content:"⌄";font-size:16px;color:#667085;transition:transform .2s}
+.education-dropdown[open] summary{border-color:#ff7a00;background:#fff;box-shadow:0 0 0 4px rgba(255,122,0,.10);border-radius:11px 11px 0 0}
+.education-dropdown[open] summary:after{transform:rotate(180deg)}
+.education-dropdown-menu{display:grid;gap:4px;padding:7px;border:1px solid #ffb36b;border-top:0;border-radius:0 0 11px 11px;background:#fff;box-shadow:0 14px 30px rgba(15,23,42,.10)}
+.education-dropdown-option{border:0;background:transparent;text-align:left;padding:10px 11px;border-radius:8px;color:#344054;font-size:13px;font-weight:650;cursor:pointer}
+.education-dropdown-option:hover{background:#fff3e8;color:#0e376d}
+.education-fixed-value{margin-top:6px;padding:12px 13px;border:1px solid #e2e8f0;border-radius:11px;background:#f5f7fa;color:#344054;font-size:13px;font-weight:700}
+.language-dropdown details summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:12px 13px;border:1px solid #d0d5dd;border-radius:11px;background:#fcfdff;color:#344054;font-size:13px;font-weight:650}
+.language-dropdown details summary::-webkit-details-marker{display:none}
+.language-dropdown details summary:after{content:"⌄";font-size:16px;color:#667085}
+.language-dropdown details[open] summary{border-color:#ff7a00;background:#fff;border-radius:11px 11px 0 0;box-shadow:0 0 0 4px rgba(255,122,0,.10)}
+.language-dropdown .language-options{display:grid;gap:7px;padding:9px;border:1px solid #ffb36b;border-top:0;border-radius:0 0 11px 11px;background:#fff;box-shadow:0 14px 30px rgba(15,23,42,.10)}
+.language-dropdown .language-choice{display:flex!important;align-items:center;gap:9px;margin:0;padding:9px 10px;border-radius:8px;background:#f8fafc;font-size:12px!important}
+.language-dropdown .language-choice input{margin:0}
+.declaration-hindi{display:block;margin-top:6px;color:#5f6b7a}
+@media(max-width:700px){body:has(.application-form) .education-choice-grid{grid-template-columns:1fr}}
